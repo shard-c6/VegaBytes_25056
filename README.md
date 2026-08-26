@@ -216,7 +216,7 @@ VegaBytes_25056/
 | **Mukta** | Cloud Infra + Monitoring | Tier 1 | [@Mukta01](https://github.com/Mukta01) |
 | **Ankita** | Index Math + eSankhyiki Analysis | Tier 2 | [@ankita01209](https://github.com/ankita01209) |
 | **Mufeed** | Backend APIs + Data Validation | Tier 2 | — |
-| **Shubham** | Dashboard + Pitch Master | Tier 3 | — |
+| **Shubham** | Dashboard + Pitch Master | Tier 3 | [@Shubham-Vaidya](https://github.com/Shubham-Vaidya) |
 
 ---
 
