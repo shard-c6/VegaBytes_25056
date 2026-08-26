@@ -1,0 +1,34 @@
+# CodeRabbit Configuration File
+# Documentation: https://coderabbit.ai/docs/configuration
+
+language: "en-US"
+
+# Tone of the reviews
+tone_instructions: "Act as a strict SIH 2026 Tech Judge. Enforce polite web scraping (rate-limits, no PII), strict separation of base fares from taxes, robust error fallbacks, and typed Python without hardcoded secrets. Prioritize data integrity over style."
+
+reviews:
+  # Review Profile: 'chill' for balanced feedback, 'assertive' for more nitpicky feedback
+  profile: "chill"
+  
+  # Automatically approve PRs when all CodeRabbit comments are resolved
+  request_changes_workflow: false
+  
+  # High-level summary settings
+  high_level_summary: true
+  high_level_summary_instructions: |
+    Generate a concise release note style summary. 
+    Format as a bulleted list grouped by the 3-tier architecture (Tier 1: Data, Tier 2: Logic, Tier 3: Presentation) if applicable. 
+    Highlight any security or data-integrity changes.
+  high_level_summary_placeholder: "@coderabbitai summary"
+  
+  # Auto-review on PR creation
+  auto_review:
+    enabled: true
+    drafts: false
+    ignore_title_keywords:
+      - "WIP"
+      - "DO NOT MERGE"
+
+chat:
+  # Enable chatting with CodeRabbit on PRs
+  auto_reply: true
