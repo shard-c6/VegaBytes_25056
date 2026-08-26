@@ -29,52 +29,38 @@ The National Statistical Office (NSO) measures airfare inflation using **manual,
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│              TIER 1: DATA LAYER (Shardul + Mukta + Rahul)       │
-│                                                                   │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────────┐  │
-│  │ Stealth      │  │ Airline      │  │ AI DOM Parser         │  │
-│  │ OTA Scrapers │  │ Direct       │  │ (Gemini Flash         │  │
-│  │ (Playwright) │  │ Scrapers     │  │  fallback only)       │  │
-│  └──────┬───────┘  └──────┬───────┘  └──────────┬────────────┘  │
-│         │                 │                       │               │
-│         └─────────────────┴───────────────────────┘              │
-│                           │                                       │
-│               ┌───────────▼────────────┐                         │
-│               │  ETL: Validation +     │  ← Price guards         │
-│               │  Tax Separation        │  ← Schema enforcement   │
-│               └───────────┬────────────┘  ← Dedup               │
-│                           │                                       │
-│               ┌───────────▼────────────┐                         │
-│               │  TimescaleDB /         │  scraped_fares          │
-│               │  PostgreSQL            │  data_quality_log       │
-│               └───────────┬────────────┘  index_values           │
-└───────────────────────────│─────────────────────────────────────┘
-                            │
-┌───────────────────────────│─────────────────────────────────────┐
-│         TIER 2: LOGIC LAYER (Ankita + Mufeed)                   │
-│                           │                                       │
-│               ┌───────────▼────────────┐                         │
-│               │  Modified Laspeyres    │  Σ(P_it·Q_i0)          │
-│               │  Index Calculator      │  ─────────── × 100      │
-│               │  (APIx)                │  Σ(P_i0·Q_i0)          │
-│               └───────────┬────────────┘                         │
-│                           │  DGCA route weights                  │
-│               ┌───────────▼────────────┐                         │
-│               │  FastAPI REST Layer    │  /api/v1/index          │
-│               │  (NSO/RBI consumption) │  /api/v1/fares          │
-│               └───────────┬────────────┘  /api/v1/pipeline/status│
-└───────────────────────────│─────────────────────────────────────┘
-                            │
-┌───────────────────────────│─────────────────────────────────────┐
-│      TIER 3: PRESENTATION LAYER (Shubham + Shardul)             │
-│                           │                                       │
-│               ┌───────────▼────────────┐                         │
-│               │  Interactive Dashboard  │  Heatmaps, trends      │
-│               │  (Streamlit / Next.js)  │  Pipeline status       │
-│               └────────────────────────┘  Back-test comparison   │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph Tier1 ["TIER 1: DATA LAYER (Shardul + Mukta + Rahul)"]
+        direction TB
+        S1["Stealth OTA Scrapers<br>(Playwright)"]
+        S2["Airline Direct Scrapers"]
+        S3["AI DOM Parser<br>(Gemini Flash fallback only)"]
+        
+        ETL["ETL: Validation + Tax Separation<br><br><i>← Price guards<br>← Schema enforcement<br>← Dedup</i>"]
+        DB[("TimescaleDB / PostgreSQL<br><br><i>scraped_fares<br>data_quality_log<br>index_values</i>")]
+        
+        S1 --> ETL
+        S2 --> ETL
+        S3 --> ETL
+        ETL --> DB
+    end
+
+    subgraph Tier2 ["TIER 2: LOGIC LAYER (Ankita + Mufeed)"]
+        direction TB
+        Index["Modified Laspeyres Index Calculator (APIx)<br><br><i>Σ(P_it·Q_i0) / Σ(P_i0·Q_i0) × 100</i>"]
+        API["FastAPI REST Layer<br>(NSO/RBI consumption)<br><br><i>/api/v1/index<br>/api/v1/fares<br>/api/v1/pipeline/status</i>"]
+        
+        Index -- "DGCA route weights" --> API
+    end
+
+    subgraph Tier3 ["TIER 3: PRESENTATION LAYER (Shubham + Shardul)"]
+        direction TB
+        Dash["Interactive Dashboard<br>(Streamlit / Next.js)<br><br><i>Heatmaps, trends<br>Pipeline status<br>Back-test comparison</i>"]
+    end
+
+    DB --> Index
+    API --> Dash
 ```
 
 ---
