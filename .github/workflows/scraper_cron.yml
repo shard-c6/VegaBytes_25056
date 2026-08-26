@@ -1,0 +1,49 @@
+name: Scraper — Scheduled Data Collection
+
+on:
+  schedule:
+    # Every 4 hours (UTC): captures T+1, T+7, T+30 booking windows
+    - cron: '0 */4 * * *'
+  workflow_dispatch:  # Allow manual trigger for testing
+
+jobs:
+  scrape:
+    name: Run Scraper Pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -e .
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: Run scraper pipeline
+        run: python -m src.scrapers.run_pipeline
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          HEADLESS: "true"
+
+      - name: Run index calculation
+        run: python -m src.index.compute_daily
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Upload scraper logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraper-logs-${{ github.run_id }}
+          path: logs/
+          retention-days: 30
