@@ -215,7 +215,7 @@ VegaBytes_25056/
 | **Rahul** | Airline Direct Scrapers | Tier 1 | [@rahulcodes-java](https://github.com/rahulcodes-java) |
 | **Mukta** | Cloud Infra + Monitoring | Tier 1 | [@Mukta01](https://github.com/Mukta01) |
 | **Ankita** | Index Math + eSankhyiki Analysis | Tier 2 | [@ankita01209](https://github.com/ankita01209) |
-| **Mufeed** | Backend Support + Data Validation | Tier 2 | — |
+| **Mufeed** | Backend Support + Data Validation | Tier 2 | [@mufeedrajapkar](https://github.com/mufeedrajapkar) |
 | **Shubham** | Backend Lead + APIs + Dashboard + Pitch Lead | Tier 2 & 3 | [@Shubham-Vaidya](https://github.com/Shubham-Vaidya) |
 
 ---
