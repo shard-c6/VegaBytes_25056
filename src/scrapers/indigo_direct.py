@@ -15,7 +15,7 @@ from typing import Optional
 
 import structlog
 from playwright.sync_api import sync_playwright
-from playwright_stealth import stealth_sync
+from playwright_stealth import Stealth
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from .base import BaseScraper, FareRecord, ScraperFactory
@@ -73,7 +73,7 @@ class IndigoDirectScraper(BaseScraper):
                 )
             )
             page = context.new_page()
-            stealth_sync(page)
+            Stealth().apply_stealth_sync(page)
             page.goto(url, timeout=60_000)
             page.wait_for_load_state("networkidle", timeout=30_000)
 
@@ -85,7 +85,10 @@ class IndigoDirectScraper(BaseScraper):
             if not records:
                 # ── Fallback: AI DOM Parser ────────────────────────
                 self.log.warning("css_selectors_failed", falling_back_to="ai_dom_parser")
-                html_fragment = page.inner_html(".flight-listing, .fare-card, main")
+                try:
+                    html_fragment = page.inner_html(".flight-listing, .fare-card, main", timeout=5000)
+                except Exception:
+                    html_fragment = page.evaluate("document.body.innerHTML")
                 records = AIdomParser().parse(
                     html_fragment=html_fragment,
                     context={

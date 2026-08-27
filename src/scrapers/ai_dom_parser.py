@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any, Optional
 
-import google.generativeai as genai
+from google import genai
 import structlog
 
 from .base import FareRecord
@@ -61,8 +61,7 @@ class AIdomParser:
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise EnvironmentError("GEMINI_API_KEY not set in environment")
-        genai.configure(api_key=api_key)
-        self._model = genai.GenerativeModel(self.model_name)
+        self._client = genai.Client(api_key=api_key)
         self.log = structlog.get_logger(parser="ai_dom_parser")
 
     def parse(self, html_fragment: str, context: dict[str, Any]) -> list[FareRecord]:
@@ -85,8 +84,12 @@ class AIdomParser:
 
         try:
             prompt = EXTRACTION_PROMPT.format(html=truncated_html)
-            response = self._model.generate_content(prompt)
-            raw_json = response.text.strip().lstrip("```json").rstrip("```").strip()
+            response = self._client.models.generate_content(
+                model=self.model_name,
+                contents=prompt
+            )
+            response_text = response.text or ""
+            raw_json = response_text.strip().lstrip("```json").rstrip("```").strip()
             extracted: list[dict] = json.loads(raw_json)
             self.log.info("ai_parse_success", fares_found=len(extracted))
         except (json.JSONDecodeError, Exception) as e:
@@ -98,9 +101,9 @@ class AIdomParser:
             try:
                 records.append(FareRecord(
                     route=f"{context['origin']}-{context['destination']}",
-                    airline=item.get("airline", context.get("airline", "Unknown")),
+                    airline=item.get("airline") or context.get("airline") or "Unknown",
                     flight_number=item.get("flight_number"),
-                    cabin_class=item.get("cabin_class", context.get("cabin_class", "economy")),
+                    cabin_class=item.get("cabin_class") or context.get("cabin_class") or "economy",
                     departure_date=context["departure_date"],
                     booking_window=context["booking_window"],
                     base_fare=item.get("base_fare"),

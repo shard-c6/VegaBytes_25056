@@ -136,11 +136,20 @@ Here is a deep-dive analysis of the SIH Problem Statement **26056: Real-time Air
 
 ---
 
-### 10. Judge Q&A Stress-Test 🎤
+### 10. Legal Defensibility Framework ⚖️
+
+To ensure the project is legally sound and answers potential scrutiny from evaluators, we rely on the following pillars:
+- **International Precedent**: We draw on the ruling from *hiQ Labs v. LinkedIn (2022, US)*, which affirmed that scraping publicly available data on the internet does not violate computer fraud and abuse laws, establishing a strong precedent for scraping public data for statistical research.
+- **Statutory Backing**: We are framing this project squarely under the **Collection of Statistics Act, 2008** (MoSPI's mandate). If authorized by MoSPI, the collection of this pricing data has a clear statutory backing and serves the national economic interest.
+- **Zero PII Collection**: Our scrapers are strictly designed to collect **zero Personally Identifiable Information (PII)**. We only extract public price data points, route information, and timestamps, which entirely sidesteps privacy laws like the DPDP Act or GDPR.
+
+---
+
+### 11. Judge Q&A Stress-Test 🎤
 
 **Q1. "OTAs actively block scrapers. How are you bypassing their protections without violating ethical guidelines?"**
 
-- **Sharp Answer:** "We employ 'polite scraping' architectures. We respect the `robots.txt` crawl delays, use Playwright-stealth to render JavaScript naturally, and rotate residential IPs to distribute our footprint. We keep our request rate strictly below human-throttle limits (e.g., 2 requests/minute per IP) ensuring zero server strain, which aligns with fair-use data collection for statistical research."
+- **Sharp Answer:** "We employ 'polite scraping' architectures. We respect the `robots.txt` crawl delays, use Playwright-stealth to render JavaScript naturally, and rotate residential IPs to distribute our footprint. We keep our request rate strictly below human-throttle limits (e.g., 2 requests/minute per IP) ensuring zero server strain. Furthermore, this project is designed for statistical research under the MoSPI mandate (Collection of Statistics Act, 2008). We collect zero Personally Identifiable Information (PII), only extracting price data points, which aligns with international precedents such as hiQ Labs v. LinkedIn (2022, US) affirming the legality of scraping public data."
 
 **Q2. "How did you separate the Base Fare from Taxes, given that OTAs often bundle them on the frontend?"**
 
