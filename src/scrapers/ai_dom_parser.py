@@ -94,13 +94,19 @@ class AIdomParser:
         response_text = response.text or ""
         try:
             raw_json = response_text.strip().removeprefix("```json").removesuffix("```").strip()
-            extracted: list[dict] = json.loads(raw_json)
-            self.log.info("ai_parse_success", fares_found=len(extracted))
+            extracted = json.loads(raw_json)
         except json.JSONDecodeError as e:
             self.log.error(
                 "gemini_response_not_json", error=str(e), raw_response=response_text[:500]
             )
             return []
+
+        if not isinstance(extracted, list) or not all(isinstance(item, dict) for item in extracted):
+            # The prompt asks for a JSON array of objects, but nothing stops
+            # the model from returning a bare object, string, or number.
+            self.log.error("gemini_response_invalid_shape", raw_response=response_text[:500])
+            return []
+        self.log.info("ai_parse_success", fares_found=len(extracted))
 
         records = []
         for item in extracted:

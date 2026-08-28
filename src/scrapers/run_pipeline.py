@@ -27,15 +27,21 @@ from datetime import date, timedelta
 import structlog
 from dotenv import load_dotenv
 
+# Must run before the imports below: src.db reads DATABASE_URL at module
+# scope, and ai_dom_parser.AIdomParser.model_name reads GEMINI_MODEL as a
+# dataclass field default evaluated at import time — a .env-only value
+# would otherwise be silently ignored.
+load_dotenv()
+
 # Explicit imports required to populate the ScraperFactory registry —
 # src/scrapers/__init__.py does not import these, so nothing registers
 # @ScraperFactory.register unless the module itself is imported somewhere.
-import src.scrapers.airindia_direct  # noqa: F401
-import src.scrapers.indigo_direct  # noqa: F401
-import src.scrapers.makemytrip  # noqa: F401
-from src import db
-from src.etl.validator import PriceValidator
-from src.scrapers.base import ScraperFactory
+import src.scrapers.airindia_direct  # noqa: E402,F401
+import src.scrapers.indigo_direct  # noqa: E402,F401
+import src.scrapers.makemytrip  # noqa: E402,F401
+from src import db  # noqa: E402
+from src.etl.validator import PriceValidator  # noqa: E402
+from src.scrapers.base import ScraperFactory  # noqa: E402
 
 log = structlog.get_logger()
 
@@ -83,13 +89,15 @@ def run_source(source_id: str, proxy: str | None) -> None:
                         error=str(e),
                     )
                     continue
+                finally:
+                    # Polite-scraping delay must apply on failure too, or a
+                    # crashing route gets hit again immediately next loop.
+                    time.sleep(INTER_ROUTE_DELAY_SECONDS)
 
                 valid, rejected = validator.validate_batch(records)
                 with db.engine.connect() as conn:
                     total_scraped += db.insert_scraped_fares(conn, valid)
                     total_rejected += db.insert_rejections(conn, source_id, rejected)
-
-                time.sleep(INTER_ROUTE_DELAY_SECONDS)
 
         status = "success" if total_scraped > 0 else "failed"
         if status == "failed":
@@ -119,12 +127,12 @@ def main() -> None:
             structlog.dev.ConsoleRenderer(),
         ]
     )
-    load_dotenv()
     db.ensure_schema()
 
     proxy = os.getenv("HTTP_PROXY")
     if proxy:
-        log.info("using_proxy", proxy=proxy)
+        # Never log the raw URL — it may embed proxy credentials.
+        log.info("using_proxy", configured=True)
 
     for source_id in SOURCES:
         try:

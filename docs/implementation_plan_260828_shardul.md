@@ -52,7 +52,7 @@ Each issue closes via its own PR, in this order: **PR 1 (#17) → PR 2 (#19) + P
 - `scraped_fares` gains rows (`sqlite3 vegabytes.db "select count(*), source from scraped_fares group by source;"`), `scraper_runs` gets one row per source with `status`/`finished_at` set.
 - `data/raw/.../*.html.gz` files exist, are valid gzip, and every `raw_html_path` in the DB points to a real file.
 - Break `GEMINI_API_KEY` and confirm `gemini_api_call_failed` appears (not a silent empty return); confirm a malformed response instead logs `gemini_response_not_json`.
-- Existing `tests/test_validator.py`, `tests/test_laspeyres.py` still pass unmodified.
+- Existing `tests/test_validator.py` still passes unmodified. `tests/test_laspeyres.py` has one known pre-existing failure (`test_carry_forward_on_missing_route`) confirmed present on `main` before this change too — unrelated to this PR, owned by Ankita's `src/index/laspeyres.py`.
 
 ---
 

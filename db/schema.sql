@@ -39,6 +39,11 @@ CREATE TABLE IF NOT EXISTS scraped_fares (
     is_valid        BOOLEAN NOT NULL DEFAULT TRUE
 );
 
+-- Additive migration: re-running this file against a database created before
+-- raw_html_path existed adds the column instead of silently no-op'ing (Postgres
+-- 9.6+; CREATE TABLE IF NOT EXISTS above does not add columns to an existing table).
+ALTER TABLE scraped_fares ADD COLUMN IF NOT EXISTS raw_html_path TEXT;
+
 CREATE INDEX idx_scraped_fares_route_date ON scraped_fares(route_id, departure_date);
 CREATE INDEX idx_scraped_fares_timestamp  ON scraped_fares(scrape_timestamp DESC);
 

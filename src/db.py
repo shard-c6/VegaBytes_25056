@@ -34,9 +34,11 @@ from sqlalchemy import (
     String,
     Table,
     Text,
+    UniqueConstraint,
     create_engine,
     insert,
     select,
+    text,
 )
 from sqlalchemy.engine import Connection, Engine
 
@@ -59,6 +61,7 @@ routes = Table(
     Column("dgca_weight", Float, nullable=False, default=0.0),
     Column("is_seasonal", Boolean, nullable=False, default=False),
     Column("created_at", DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)),
+    UniqueConstraint("origin", "destination", name="uq_routes_origin_destination"),
 )
 
 scraped_fares = Table(
@@ -123,6 +126,24 @@ _SEED_ROUTES = [
 ]
 
 
+def _add_missing_sqlite_columns(conn: Connection) -> None:
+    """
+    SQLite-only additive migration.
+
+    `metadata.create_all()` only creates tables that don't exist yet — it
+    never adds columns to a table that's already there. A SQLite file created
+    before `raw_html_path` existed would otherwise reject every fare insert.
+    Postgres has the equivalent `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` in
+    db/schema.sql.
+    """
+    if conn.engine.dialect.name != "sqlite":
+        return
+    existing_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(scraped_fares)"))}
+    if "raw_html_path" not in existing_cols:
+        conn.execute(text("ALTER TABLE scraped_fares ADD COLUMN raw_html_path TEXT"))
+        conn.commit()
+
+
 def ensure_schema(conn: Optional[Connection] = None) -> None:
     """Create tables if missing (SQLite dev convenience) and seed routes.
 
@@ -133,6 +154,7 @@ def ensure_schema(conn: Optional[Connection] = None) -> None:
     owns_conn = conn is None
     conn = conn or engine.connect()
     try:
+        _add_missing_sqlite_columns(conn)
         existing = {
             (row.origin, row.destination)
             for row in conn.execute(select(routes.c.origin, routes.c.destination))
