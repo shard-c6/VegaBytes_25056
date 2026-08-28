@@ -17,7 +17,7 @@ from playwright.sync_api import sync_playwright
 from playwright_stealth import Stealth
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from .base import BaseScraper, FareRecord, ScraperFactory
+from .base import BaseScraper, FareRecord, ScraperFactory, archive_html
 from .ai_dom_parser import AIdomParser
 
 log = structlog.get_logger()
@@ -72,6 +72,16 @@ class AirIndiaDirectScraper(BaseScraper):
             except Exception:
                 pass
 
+            # Archive raw HTML on every scrape (issue #17 A4) — lets selectors
+            # be developed offline and makes AI-fallback behavior replayable.
+            raw_html_path = None
+            try:
+                raw_html_path = archive_html(
+                    self.SOURCE_ID, f"{origin}-{destination}", page.content()
+                )
+            except Exception as e:
+                self.log.warning("html_archive_failed", error=str(e))
+
             # ── Primary: CSS selector extraction ──────────────────
             records = self._extract_with_selectors(
                 page, origin, destination, departure_date, booking_window
@@ -98,6 +108,9 @@ class AirIndiaDirectScraper(BaseScraper):
                     }
                 )
 
+            for r in records:
+                r.raw_html_path = raw_html_path
+
             browser.close()
         self._sleep()
         return records
@@ -106,8 +119,11 @@ class AirIndiaDirectScraper(BaseScraper):
         self, page, origin, destination, departure_date, booking_window
     ) -> list[FareRecord]:
         records = []
-        # TODO (Shardul): Update selectors after inspecting live Air India DOM.
-        fare_cards = page.query_selector_all(".flight-card-placeholder") 
+        # DEFERRED (see issue #17 follow-up): placeholder selectors always
+        # return zero cards, so this intentionally falls through to the AI DOM
+        # parser for now — real selectors need live-DOM inspection, using the
+        # HTML archive_html() in scrape_route() now saves for offline work.
+        fare_cards = page.query_selector_all(".flight-card-placeholder")
         for card in fare_cards:
             try:
                 total_text = card.query_selector(".price-placeholder")

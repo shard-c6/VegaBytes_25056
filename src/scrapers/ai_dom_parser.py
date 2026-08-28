@@ -55,7 +55,7 @@ class AIdomParser:
     Latency: ~2-4 seconds per call (acceptable for fallback only)
     """
 
-    model_name: str = "gemini-1.5-flash"
+    model_name: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
     def __post_init__(self) -> None:
         api_key = os.getenv("GEMINI_API_KEY")
@@ -82,18 +82,24 @@ class AIdomParser:
         # Truncate to avoid token limit (keep first 8000 chars — price section)
         truncated_html = html_fragment[:8000]
 
+        prompt = EXTRACTION_PROMPT.format(html=truncated_html)
         try:
-            prompt = EXTRACTION_PROMPT.format(html=truncated_html)
-            response = self._client.models.generate_content(
-                model=self.model_name,
-                contents=prompt
-            )
-            response_text = response.text or ""
-            raw_json = response_text.strip().lstrip("```json").rstrip("```").strip()
+            response = self._client.models.generate_content(model=self.model_name, contents=prompt)
+        except Exception as e:
+            # Auth, quota, network, or transport failure — must be loud and
+            # distinguishable from a parse failure, never a silent [].
+            self.log.error("gemini_api_call_failed", error=str(e), error_type=type(e).__name__)
+            return []
+
+        response_text = response.text or ""
+        try:
+            raw_json = response_text.strip().removeprefix("```json").removesuffix("```").strip()
             extracted: list[dict] = json.loads(raw_json)
             self.log.info("ai_parse_success", fares_found=len(extracted))
-        except (json.JSONDecodeError, Exception) as e:
-            self.log.error("ai_parse_failed", error=str(e))
+        except json.JSONDecodeError as e:
+            self.log.error(
+                "gemini_response_not_json", error=str(e), raw_response=response_text[:500]
+            )
             return []
 
         records = []

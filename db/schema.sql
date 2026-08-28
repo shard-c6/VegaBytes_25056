@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS scraped_fares (
     total_fare      NUMERIC(10,2) NOT NULL,
     source          VARCHAR(50) NOT NULL,  -- e.g. 'indigo_direct', 'makemytrip'
     source_url      TEXT,
+    raw_html_path   TEXT,                  -- gzipped archive of the scraped page, see src/scrapers/base.py:archive_html
     scrape_timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     is_valid        BOOLEAN NOT NULL DEFAULT TRUE
 );
