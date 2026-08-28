@@ -34,9 +34,15 @@ CREATE TABLE IF NOT EXISTS scraped_fares (
     total_fare      NUMERIC(10,2) NOT NULL,
     source          VARCHAR(50) NOT NULL,  -- e.g. 'indigo_direct', 'makemytrip'
     source_url      TEXT,
+    raw_html_path   TEXT,                  -- gzipped archive of the scraped page, see src/scrapers/base.py:archive_html
     scrape_timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     is_valid        BOOLEAN NOT NULL DEFAULT TRUE
 );
+
+-- Additive migration: re-running this file against a database created before
+-- raw_html_path existed adds the column instead of silently no-op'ing (Postgres
+-- 9.6+; CREATE TABLE IF NOT EXISTS above does not add columns to an existing table).
+ALTER TABLE scraped_fares ADD COLUMN IF NOT EXISTS raw_html_path TEXT;
 
 CREATE INDEX idx_scraped_fares_route_date ON scraped_fares(route_id, departure_date);
 CREATE INDEX idx_scraped_fares_timestamp  ON scraped_fares(scrape_timestamp DESC);

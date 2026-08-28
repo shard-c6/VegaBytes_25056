@@ -18,7 +18,7 @@ from playwright.sync_api import sync_playwright
 from playwright_stealth import Stealth
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from .base import BaseScraper, FareRecord, ScraperFactory
+from .base import BaseScraper, FareRecord, ScraperFactory, archive_html
 from .ai_dom_parser import AIdomParser
 
 log = structlog.get_logger()
@@ -77,6 +77,16 @@ class IndigoDirectScraper(BaseScraper):
             page.goto(url, timeout=60_000)
             page.wait_for_load_state("networkidle", timeout=30_000)
 
+            # Archive raw HTML on every scrape (issue #17 A4) — lets selectors
+            # be developed offline and makes AI-fallback behavior replayable.
+            raw_html_path = None
+            try:
+                raw_html_path = archive_html(
+                    self.SOURCE_ID, f"{origin}-{destination}", page.content()
+                )
+            except Exception as e:
+                self.log.warning("html_archive_failed", error=str(e))
+
             # ── Primary: CSS selector extraction ──────────────────
             records = self._extract_with_selectors(
                 page, origin, destination, departure_date, booking_window
@@ -101,6 +111,9 @@ class IndigoDirectScraper(BaseScraper):
                     }
                 )
 
+            for r in records:
+                r.raw_html_path = raw_html_path
+
             browser.close()
         self._sleep()
         return records
@@ -110,7 +123,11 @@ class IndigoDirectScraper(BaseScraper):
     ) -> list[FareRecord]:
         """
         Extract fares using CSS selectors.
-        TODO (Shardul): Update selectors after inspecting live IndiGo DOM.
+        DEFERRED (see issue #17 follow-up): placeholder selectors below always
+        return zero cards, so every scrape intentionally falls through to the
+        AI DOM parser for now. Real selectors need live-DOM inspection this
+        session couldn't do; the HTML archived by archive_html() in
+        scrape_route() is meant to let that happen offline, without re-scraping.
         Selectors break when IndiGo redesigns — AI parser handles recovery.
         """
         records = []

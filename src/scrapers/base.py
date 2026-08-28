@@ -7,9 +7,11 @@ Owner: Shardul (Issue #7 — AI DOM Parser, Issue #4 — Demo Strategy)
 from __future__ import annotations
 
 import abc
+import gzip
+import pathlib
 import time
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Optional
 
 import structlog
@@ -34,7 +36,25 @@ class FareRecord:
     total_fare: float
     source: str                 # scraper identifier
     source_url: Optional[str]
+    raw_html_path: Optional[str] = None  # gzipped archive of the page HTML, see archive_html()
     extra: dict = field(default_factory=dict)
+
+
+def archive_html(source: str, route: str, html: str) -> str:
+    """
+    Gzip-archive a scraped page's raw HTML to data/raw/<source>/<route>/<timestamp>.html.gz.
+
+    This is the highest-leverage fix in issue #17: it lets selectors be
+    developed offline against real HTML (no re-scraping, no ban risk), gives
+    the scrapers their first regression fixtures, and makes AI-fallback
+    behavior replayable instead of dependent on live-site luck.
+    """
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    path = pathlib.Path("data") / "raw" / source / route / f"{ts}.html.gz"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with gzip.open(path, "wt", encoding="utf-8") as f:
+        f.write(html)
+    return str(path)
 
 
 class BaseScraper(abc.ABC):
