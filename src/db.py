@@ -153,10 +153,14 @@ def ensure_schema(conn: Optional[Connection] = None) -> None:
     On Postgres this is a no-op for tables `db/schema.sql` already created;
     it only fills in routes that aren't there yet.
     """
-    metadata.create_all(engine)
     owns_conn = conn is None
     conn = conn or engine.connect()
     try:
+        # Bind schema creation to the connection actually in use — a
+        # caller-supplied conn may belong to a different engine (e.g. an
+        # in-memory SQLite connection in a test), and create_all(engine)
+        # would silently create tables somewhere the caller can't see.
+        metadata.create_all(bind=conn)
         _add_missing_sqlite_columns(conn)
         existing = {
             (row.origin, row.destination)

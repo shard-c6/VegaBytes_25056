@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import math
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Optional
 
@@ -75,7 +75,11 @@ class AIdomParser:
     Latency: ~2-4 seconds per call (acceptable for fallback only)
     """
 
-    model_name: str = os.getenv("GEMINI_MODEL") or "gemini-2.5-flash"
+    # A field(default_factory=...) resolves per-instance, not at module
+    # import time — some entry points (test_scraper.py) import this module
+    # before calling load_dotenv(), which would otherwise bake in whatever
+    # GEMINI_MODEL happened to be set (or not) at import time.
+    model_name: str = field(default_factory=lambda: os.getenv("GEMINI_MODEL") or "gemini-2.5-flash")
 
     def __post_init__(self) -> None:
         api_key = os.getenv("GEMINI_API_KEY")
@@ -111,7 +115,14 @@ class AIdomParser:
             self.log.error("gemini_api_call_failed", error=str(e), error_type=type(e).__name__)
             return []
 
-        response_text = response.text or ""
+        try:
+            # .text can itself raise ValueError for a response made of
+            # non-text parts (e.g. a safety block) — must not escape parse().
+            response_text = response.text or ""
+        except ValueError as e:
+            self.log.error("gemini_response_not_text", error=str(e))
+            return []
+
         try:
             raw_json = response_text.strip().removeprefix("```json").removesuffix("```").strip()
             extracted = json.loads(raw_json)
@@ -131,11 +142,23 @@ class AIdomParser:
         records = []
         for item in extracted:
             try:
+                airline = item.get("airline") or context.get("airline") or "Unknown"
+                if not isinstance(airline, str):
+                    raise ValueError(f"airline must be a string, got {airline!r}")
+
+                flight_number = item.get("flight_number")
+                if flight_number is not None and not isinstance(flight_number, str):
+                    raise ValueError(f"flight_number must be a string, got {flight_number!r}")
+
+                cabin_class = item.get("cabin_class") or context.get("cabin_class") or "economy"
+                if cabin_class not in ("economy", "business"):
+                    raise ValueError(f"cabin_class must be economy/business, got {cabin_class!r}")
+
                 records.append(FareRecord(
                     route=f"{context['origin']}-{context['destination']}",
-                    airline=item.get("airline") or context.get("airline") or "Unknown",
-                    flight_number=item.get("flight_number"),
-                    cabin_class=item.get("cabin_class") or context.get("cabin_class") or "economy",
+                    airline=airline,
+                    flight_number=flight_number,
+                    cabin_class=cabin_class,
                     departure_date=context["departure_date"],
                     booking_window=context["booking_window"],
                     base_fare=_coerce_fare(item.get("base_fare"), required=False),
