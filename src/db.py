@@ -159,11 +159,15 @@ def ensure_schema(conn: Optional[Connection] = None) -> None:
             (row.origin, row.destination)
             for row in conn.execute(select(routes.c.origin, routes.c.destination))
         }
+        # db/schema.sql declares `label` as a Postgres GENERATED ALWAYS AS (...)
+        # STORED column, which rejects an explicit value on INSERT — only the
+        # SQLite table (declared as a plain column here) needs it supplied.
+        is_sqlite = conn.engine.dialect.name == "sqlite"
         missing = [
             {
                 "origin": o,
                 "destination": d,
-                "label": f"{o}-{d}",
+                **({"label": f"{o}-{d}"} if is_sqlite else {}),
                 "dgca_weight": 0.0,
                 "is_seasonal": False,
             }

@@ -127,7 +127,10 @@ class AIdomParser:
                     source=f"ai_parser:{context['source']}",
                     source_url=None,
                 ))
-            except (KeyError, ValueError) as e:
+            except (KeyError, TypeError, ValueError) as e:
+                # TypeError covers e.g. total_fare: null -> float(None); without
+                # it one malformed record would abort the whole batch instead
+                # of just being skipped.
                 self.log.warning("record_parse_error", error=str(e), item=item)
 
         return records
