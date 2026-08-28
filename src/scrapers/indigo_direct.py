@@ -7,19 +7,19 @@ Uses Playwright-stealth as primary, AI DOM parser as fallback.
 Owner: Shardul
 Related Issues: #1 (Legal), #4 (Demo), #5 (Tax Separation), #7 (AI Parser)
 """
+
 from __future__ import annotations
 
 import os
-from datetime import date, timedelta
-from typing import Optional
+from datetime import date
 
 import structlog
 from playwright.sync_api import sync_playwright
 from playwright_stealth import Stealth
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from .base import BaseScraper, FareRecord, ScraperFactory, archive_html
 from .ai_dom_parser import AIdomParser
+from .base import BaseScraper, FareRecord, ScraperFactory, archive_html
 
 log = structlog.get_logger()
 
@@ -96,7 +96,9 @@ class IndigoDirectScraper(BaseScraper):
                 # ── Fallback: AI DOM Parser ────────────────────────
                 self.log.warning("css_selectors_failed", falling_back_to="ai_dom_parser")
                 try:
-                    html_fragment = page.inner_html(".flight-listing, .fare-card, main", timeout=5000)
+                    html_fragment = page.inner_html(
+                        ".flight-listing, .fare-card, main", timeout=5000
+                    )
                 except Exception:
                     html_fragment = page.evaluate("document.body.innerHTML")
                 records = AIdomParser().parse(
@@ -108,7 +110,7 @@ class IndigoDirectScraper(BaseScraper):
                         "departure_date": departure_date,
                         "booking_window": booking_window,
                         "cabin_class": cabin_class,
-                    }
+                    },
                 )
 
             for r in records:
@@ -140,23 +142,27 @@ class IndigoDirectScraper(BaseScraper):
                 total_text = card.query_selector(".total-price")  # UPDATE THIS
                 if not total_text:
                     continue
-                total_fare = float(total_text.inner_text().replace("₹", "").replace(",", "").strip())
-                records.append(FareRecord(
-                    route=f"{origin}-{destination}",
-                    airline="IndiGo",
-                    flight_number=None,  # TODO: extract flight number
-                    cabin_class="economy",
-                    departure_date=departure_date,
-                    booking_window=booking_window,
-                    base_fare=None,      # TODO: extract from fare breakdown page
-                    fuel_surcharge=None,
-                    udf=None,
-                    psf=None,
-                    gst=None,
-                    total_fare=total_fare,
-                    source=self.SOURCE_ID,
-                    source_url=page.url,
-                ))
+                total_fare = float(
+                    total_text.inner_text().replace("₹", "").replace(",", "").strip()
+                )
+                records.append(
+                    FareRecord(
+                        route=f"{origin}-{destination}",
+                        airline="IndiGo",
+                        flight_number=None,  # TODO: extract flight number
+                        cabin_class="economy",
+                        departure_date=departure_date,
+                        booking_window=booking_window,
+                        base_fare=None,  # TODO: extract from fare breakdown page
+                        fuel_surcharge=None,
+                        udf=None,
+                        psf=None,
+                        gst=None,
+                        total_fare=total_fare,
+                        source=self.SOURCE_ID,
+                        source_url=page.url,
+                    )
+                )
             except Exception as e:
                 self.log.warning("selector_parse_error", error=str(e))
         return records

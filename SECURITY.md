@@ -14,6 +14,6 @@ We will respond within **48 hours**.
 
 - All credentials and API keys are stored in `.env` files — never committed to the repo
 - The `.env.example` file contains only placeholder values
-- Database connections use parameterised queries (via SQLAlchemy ORM) — no raw SQL with user input
+- Database connections use parameterised queries (via SQLAlchemy Core, see `src/db.py`) — no raw SQL with user input
 - API endpoints are read-only (GET only) — no write access exposed publicly
-- Scrapers collect only publicly available price data — zero PII
+- No PII is intentionally collected or stored — scrapers extract only public price, route, and timestamp data

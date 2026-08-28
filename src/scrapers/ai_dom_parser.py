@@ -8,17 +8,18 @@ return empty/null — not used as primary to keep latency and cost minimal.
 Owner: Shardul
 Related Issue: #7
 """
+
 from __future__ import annotations
 
 import json
 import math
 import os
 from dataclasses import dataclass, field
-from datetime import date
-from typing import Any, Optional
+from typing import Any
 
-from google import genai
 import structlog
+from bs4 import BeautifulSoup
+from google import genai
 
 from .base import FareRecord
 
@@ -47,23 +48,46 @@ HTML:
 """
 
 
-def _coerce_fare(value: Any, *, required: bool) -> Optional[float]:
+def _strip_noise(html: str) -> str:
+    """
+    Drop tags that never carry fare data before sending HTML to a third
+    party (Gemini): <script>/<style> are pure noise against the 8000-char
+    budget, and <input>/<form> are the elements most likely to carry
+    session tokens, CSRF fields, or other incidental user-identifying
+    values on a live booking page — backing the "no PII intentionally
+    sent" claim in SECURITY.md/README rather than just asserting it.
+    """
+    soup = BeautifulSoup(html, "lxml")
+    for tag in soup.find_all(["script", "style", "input", "form"]):
+        tag.decompose()
+    return str(soup)
+
+
+def _coerce_fare_value(value: Any) -> float:
     """
     Coerce a raw JSON fare value to float, rejecting shapes that would
     silently corrupt the index: bool (float(True) == 1.0 since bool is an
     int subtype) and non-finite floats (NaN/inf, which json.loads can't
     itself produce, but a model could emit as the bare token "NaN").
     """
-    if value is None:
-        if required:
-            raise ValueError("required fare value missing")
-        return None
     if isinstance(value, bool):
         raise ValueError(f"fare value must be numeric, got bool: {value!r}")
     fare = float(value)
     if not math.isfinite(fare):
         raise ValueError(f"fare value not finite: {fare!r}")
     return fare
+
+
+def _coerce_required_fare(value: Any) -> float:
+    if value is None:
+        raise ValueError("required fare value missing")
+    return _coerce_fare_value(value)
+
+
+def _coerce_optional_fare(value: Any) -> float | None:
+    if value is None:
+        return None
+    return _coerce_fare_value(value)
 
 
 @dataclass
@@ -84,7 +108,7 @@ class AIdomParser:
     def __post_init__(self) -> None:
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
-            raise EnvironmentError("GEMINI_API_KEY not set in environment")
+            raise OSError("GEMINI_API_KEY not set in environment")
         self._client = genai.Client(api_key=api_key)
         self.log = structlog.get_logger(parser="ai_dom_parser")
 
@@ -103,8 +127,10 @@ class AIdomParser:
             self.log.warning("html_fragment_too_short", length=len(html_fragment))
             return []
 
-        # Truncate to avoid token limit (keep first 8000 chars — price section)
-        truncated_html = html_fragment[:8000]
+        # Strip noise before truncating so the 8000-char budget goes to
+        # actual fare markup, and so we never forward <script>/<form>/<input>
+        # content to Gemini.
+        truncated_html = _strip_noise(html_fragment)[:8000]
 
         prompt = EXTRACTION_PROMPT.format(html=truncated_html)
         try:
@@ -154,22 +180,24 @@ class AIdomParser:
                 if cabin_class not in ("economy", "business"):
                     raise ValueError(f"cabin_class must be economy/business, got {cabin_class!r}")
 
-                records.append(FareRecord(
-                    route=f"{context['origin']}-{context['destination']}",
-                    airline=airline,
-                    flight_number=flight_number,
-                    cabin_class=cabin_class,
-                    departure_date=context["departure_date"],
-                    booking_window=context["booking_window"],
-                    base_fare=_coerce_fare(item.get("base_fare"), required=False),
-                    fuel_surcharge=None,
-                    udf=None,
-                    psf=None,
-                    gst=None,
-                    total_fare=_coerce_fare(item.get("total_fare"), required=True),
-                    source=f"ai_parser:{context['source']}",
-                    source_url=None,
-                ))
+                records.append(
+                    FareRecord(
+                        route=f"{context['origin']}-{context['destination']}",
+                        airline=airline,
+                        flight_number=flight_number,
+                        cabin_class=cabin_class,
+                        departure_date=context["departure_date"],
+                        booking_window=context["booking_window"],
+                        base_fare=_coerce_optional_fare(item.get("base_fare")),
+                        fuel_surcharge=None,
+                        udf=None,
+                        psf=None,
+                        gst=None,
+                        total_fare=_coerce_required_fare(item.get("total_fare")),
+                        source=f"ai_parser:{context['source']}",
+                        source_url=None,
+                    )
+                )
             except (KeyError, TypeError, ValueError) as e:
                 # TypeError covers e.g. total_fare: null -> float(None); without
                 # it one malformed record would abort the whole batch instead

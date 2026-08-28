@@ -17,13 +17,12 @@ Notes:
 Owner: Ankita
 Related Issue: #2
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Optional
 
-import numpy as np
 import structlog
 
 log = structlog.get_logger()
@@ -32,8 +31,9 @@ log = structlog.get_logger()
 @dataclass
 class RouteWeight:
     """DGCA traffic-derived weight for a route."""
-    route: str       # e.g. "DEL-BOM"
-    weight: float    # normalised (all weights sum to 1.0)
+
+    route: str  # e.g. "DEL-BOM"
+    weight: float  # normalised (all weights sum to 1.0)
 
 
 @dataclass
@@ -70,7 +70,7 @@ class LaspeyresIndexCalculator:
 
     def compute(
         self,
-        current_fares: dict[str, float],   # {route: avg_base_fare}
+        current_fares: dict[str, float],  # {route: avg_base_fare}
         index_date: date,
     ) -> IndexResult:
         """
@@ -96,12 +96,15 @@ class LaspeyresIndexCalculator:
                 continue
 
             if current_fare is None:
-                # Carry-Forward Imputation: use base fare (index = 100 for this route)
+                # Carry-Forward Imputation: use base fare (index = 100 for this route).
+                # Still counted in routes_included below, but flagged here so
+                # callers (and the `notes` field) can see imputation happened.
                 log.warning("missing_current_fare_carry_forward", route=route)
                 current_fare = base_fare
+                routes_missing.append(route)
 
-            numerator   += current_fare * weight
-            denominator += base_fare   * weight
+            numerator += current_fare * weight
+            denominator += base_fare * weight
             routes_included.append(route)
 
         if denominator == 0:

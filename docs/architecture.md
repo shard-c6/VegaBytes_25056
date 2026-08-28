@@ -5,7 +5,7 @@ This document outlines the high-level architecture of VegaBytes, an open-source 
 ## Overview
 
 The system consists of three main components:
-1. **Data Acquisition Pipeline (Scrapers):** Python-based scrapers utilizing Playwright for headless browser automation and a fallback AI DOM Parser utilizing Google Gemini 1.5 Flash to extract fare records resiliently.
+1. **Data Acquisition Pipeline (Scrapers):** Python-based scrapers utilizing Playwright for headless browser automation and a fallback AI DOM Parser utilizing Google Gemini 2.5 Flash to extract fare records resiliently.
 2. **Database:** A cloud PostgreSQL database (e.g. Neon or Supabase) to persist scraped flight data securely and allow structured SQL querying.
 3. **Dashboard:** A Next.js front-end application to present statistical indices (e.g., Modified Laspeyres Index), time-series analyses, and compliance monitoring data in real time.
 
@@ -31,8 +31,8 @@ Scraping frequency is strictly managed with `tenacity` retries and exponential b
 ## 2. Storage & Database
 
 The system utilizes PostgreSQL to warehouse data robustly over time.
-- **ORM:** SQLAlchemy is used to define the schema mappings.
-- **Migrations:** Alembic tracks DB schema migrations seamlessly.
+- **Persistence:** `src/db.py` uses SQLAlchemy **Core** (engine + `Table` metadata, not a declarative ORM) to talk to Postgres in production, falling back to SQLite for local dev via `DATABASE_URL`.
+- **Schema:** Hand-maintained in `db/schema.sql`, applied directly — there is no migration tool (e.g. Alembic) wired up. Schema changes are applied manually and reviewed as plain SQL diffs.
 - **Hosting:** Suitable for zero-cost deployment options like Supabase or Neon.
 
 ## 3. Visualization Dashboard

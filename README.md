@@ -160,7 +160,7 @@ This pipeline is designed for **statistical research under MoSPI's mandate** (Co
 
 - ✅ Respects `robots.txt` crawl delays on all sources
 - ✅ Request rate capped at **< 2 req/min per IP**
-- ✅ Zero PII collected — price data points only
+- ✅ No PII is intentionally collected or stored — only public price, route, and timestamp data
 - ✅ Data used solely for CPI augmentation research
 - ✅ Aligns with *hiQ Labs v. LinkedIn* precedent (scraping public data for research)
 

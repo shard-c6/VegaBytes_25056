@@ -2,10 +2,12 @@
 Tests for LaspeyresIndexCalculator — Issue #2.
 Run: pytest tests/test_laspeyres.py -v
 """
-from datetime import date
-import pytest
-from src.index.laspeyres import LaspeyresIndexCalculator, RouteWeight
 
+from datetime import date
+
+import pytest
+
+from src.index.laspeyres import LaspeyresIndexCalculator, RouteWeight
 
 BASE_DATE = date(2026, 8, 1)
 WEIGHTS = [
