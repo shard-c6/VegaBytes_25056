@@ -11,6 +11,7 @@ Related Issue: #7
 from __future__ import annotations
 
 import json
+import math
 import os
 from dataclasses import dataclass
 from datetime import date
@@ -46,6 +47,25 @@ HTML:
 """
 
 
+def _coerce_fare(value: Any, *, required: bool) -> Optional[float]:
+    """
+    Coerce a raw JSON fare value to float, rejecting shapes that would
+    silently corrupt the index: bool (float(True) == 1.0 since bool is an
+    int subtype) and non-finite floats (NaN/inf, which json.loads can't
+    itself produce, but a model could emit as the bare token "NaN").
+    """
+    if value is None:
+        if required:
+            raise ValueError("required fare value missing")
+        return None
+    if isinstance(value, bool):
+        raise ValueError(f"fare value must be numeric, got bool: {value!r}")
+    fare = float(value)
+    if not math.isfinite(fare):
+        raise ValueError(f"fare value not finite: {fare!r}")
+    return fare
+
+
 @dataclass
 class AIdomParser:
     """
@@ -55,7 +75,7 @@ class AIdomParser:
     Latency: ~2-4 seconds per call (acceptable for fallback only)
     """
 
-    model_name: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    model_name: str = os.getenv("GEMINI_MODEL") or "gemini-2.5-flash"
 
     def __post_init__(self) -> None:
         api_key = os.getenv("GEMINI_API_KEY")
@@ -118,12 +138,12 @@ class AIdomParser:
                     cabin_class=item.get("cabin_class") or context.get("cabin_class") or "economy",
                     departure_date=context["departure_date"],
                     booking_window=context["booking_window"],
-                    base_fare=item.get("base_fare"),
+                    base_fare=_coerce_fare(item.get("base_fare"), required=False),
                     fuel_surcharge=None,
                     udf=None,
                     psf=None,
                     gst=None,
-                    total_fare=float(item["total_fare"]),
+                    total_fare=_coerce_fare(item.get("total_fare"), required=True),
                     source=f"ai_parser:{context['source']}",
                     source_url=None,
                 ))

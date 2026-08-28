@@ -25,6 +25,7 @@ import structlog
 from sqlalchemy import (
     Boolean,
     Column,
+    Computed,
     Date,
     DateTime,
     Float,
@@ -57,7 +58,9 @@ routes = Table(
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("origin", String(3), nullable=False),
     Column("destination", String(3), nullable=False),
-    Column("label", String(30), nullable=False),
+    # Generated on both dialects (Postgres via db/schema.sql's identical
+    # expression, SQLite via this Computed()) — never supplied on INSERT.
+    Column("label", String(30), Computed("origin || '-' || destination", persisted=True)),
     Column("dgca_weight", Float, nullable=False, default=0.0),
     Column("is_seasonal", Boolean, nullable=False, default=False),
     Column("created_at", DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)),
@@ -159,15 +162,12 @@ def ensure_schema(conn: Optional[Connection] = None) -> None:
             (row.origin, row.destination)
             for row in conn.execute(select(routes.c.origin, routes.c.destination))
         }
-        # db/schema.sql declares `label` as a Postgres GENERATED ALWAYS AS (...)
-        # STORED column, which rejects an explicit value on INSERT — only the
-        # SQLite table (declared as a plain column here) needs it supplied.
-        is_sqlite = conn.engine.dialect.name == "sqlite"
+        # `label` is a generated column on both dialects (see the routes Table
+        # def above) — never supplied here, the DB computes it.
         missing = [
             {
                 "origin": o,
                 "destination": d,
-                **({"label": f"{o}-{d}"} if is_sqlite else {}),
                 "dgca_weight": 0.0,
                 "is_seasonal": False,
             }
