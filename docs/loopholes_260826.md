@@ -80,7 +80,8 @@ A systematic review of [project_idea_elaboration.md](file:///Users/shard/project
 1. **Layer 1 (Live):** Run a live scraper against an **airline direct site** (e.g., IndiGo) during the demo. Airline sites have far weaker bot protection than OTAs.
 2. **Layer 2 (Pre-warmed):** Have 30 days of **actually scraped data** in your database from your pre-hackathon collection runs. This is real data you collected — not Kaggle.
 3. **Layer 3 (Recorded Proof):** Record screen captures of successful scraping runs from the previous weeks. If live fails, show the video + the database entries with timestamps as forensic proof.
-4. **Layer 4 (Nuclear Fallback):** Only if everything above fails, use a synthetic dataset — but label it honestly as "synthetic simulation" and pivot the demo to the index calculation and dashboard quality.
+
+> **Resolved (issue #4):** implemented as `docs/demo_day_runbook.md`, exactly as Layers 1-3 above. The original draft here also had a **"Layer 4 — Nuclear Fallback"** (a labeled synthetic dataset if everything else failed). Issue #4 deliberately dropped it: even honestly labeled, fabricated data on stage undercuts the same credibility this whole strategy exists to protect. If Layers 1-3 all fail, the runbook says to state that plainly and pivot to the index methodology and dashboard instead — kept here for the historical record of why it was cut, not as a live plan.
 
 ---
 
@@ -210,7 +211,7 @@ A systematic review of [project_idea_elaboration.md](file:///Users/shard/project
 - Add monitoring/alerting requirements
 
 #### [MODIFY] Section 9 — Data & Resource Availability
-- Replace Kaggle backup plan with layered demo strategy
+- ✅ Done (issue #4): replaced the Kaggle backup plan with a pointer to `docs/demo_day_runbook.md`'s layered demo strategy
 - Add concrete infrastructure provider choices
 
 #### [MODIFY] Section 10 — Judge Q&A

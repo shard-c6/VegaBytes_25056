@@ -132,7 +132,7 @@ Here is a deep-dive analysis of the SIH Problem Statement **26056: Real-time Air
 - **Data Strategy:**
   Start running your scrapers **weeks before the hackathon finale**. The PS requires "30 days of back-tested results." You need to start collecting real-time data immediately so you have a rich database to show on demo day.
 - **Backup Plan:**
-  If the scraper breaks on demo day due to Wi-Fi limits or live bot-protection, use a pre-scraped, synthetically aged Kaggle dataset stored in your DB to prove the Dashboard and Indexing algorithms still work perfectly.
+  See [`docs/demo_day_runbook.md`](demo_day_runbook.md) for the layered live → pre-warmed-database → recorded-proof demo-day strategy. No synthetic or third-party (Kaggle) data is used anywhere in the pipeline or its demo fallback — only real scraped data with verifiable timestamps.
 
 ---
 

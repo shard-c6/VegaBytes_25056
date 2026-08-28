@@ -90,6 +90,8 @@ machine. Partial success is acceptable; rows flowing tonight matters more than r
 ## 3. Track B — The 7-day sprint, by owner
 
 ### Shardul — scraping (Issues #4, #7-followup, #17, #19)
+- ✅ Issue #4 (demo-day resilience): see `docs/demo_day_runbook.md` for the layered live →
+  pre-warmed-database → recorded-proof strategy that replaced the Kaggle fallback.
 - Day 2: derive **real IndiGo selectors** from the Track-A archive; delete every `-placeholder`
   class; restore selector-primary / AI-fallback ordering.
 - Change the fallback trigger from `if not records:` to a distinct `SelectorExtractionError` plus a
