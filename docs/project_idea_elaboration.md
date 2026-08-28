@@ -141,7 +141,7 @@ Here is a deep-dive analysis of the SIH Problem Statement **26056: Real-time Air
 To ensure the project is legally sound and answers potential scrutiny from evaluators, we rely on the following pillars:
 - **International Precedent**: We draw on the ruling from *hiQ Labs v. LinkedIn (2022, US)*, which affirmed that scraping publicly available data on the internet does not violate computer fraud and abuse laws, establishing a strong precedent for scraping public data for statistical research.
 - **Statutory Backing**: We are framing this project squarely under the **Collection of Statistics Act, 2008** (MoSPI's mandate). If authorized by MoSPI, the collection of this pricing data has a clear statutory backing and serves the national economic interest.
-- **Zero PII Collection**: Our scrapers are strictly designed to collect **zero Personally Identifiable Information (PII)**. We only extract public price data points, route information, and timestamps, which entirely sidesteps privacy laws like the DPDP Act or GDPR.
+- **No PII Intentionally Collected**: Our scrapers are designed to extract only public price data points, route information, and timestamps — no PII is intentionally collected or stored, which sidesteps privacy laws like the DPDP Act or GDPR.
 
 ---
 

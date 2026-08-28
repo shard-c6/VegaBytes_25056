@@ -11,15 +11,15 @@ Endpoints:
 Owner: Mufeed
 Related Issue: #6
 """
+
 from __future__ import annotations
 
 from datetime import date
-from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Query, Depends
+import structlog
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import structlog
 
 log = structlog.get_logger()
 
@@ -44,6 +44,7 @@ app.add_middleware(
 
 # ── Response Models ───────────────────────────────────────
 
+
 class IndexValueResponse(BaseModel):
     index_date: date
     apix_value: float
@@ -53,13 +54,14 @@ class IndexValueResponse(BaseModel):
 
 
 class PipelineStatusResponse(BaseModel):
-    last_scrape: Optional[str]
-    success_rate_24h: Optional[float]
+    last_scrape: str | None
+    success_rate_24h: float | None
     total_fares_collected: int
-    data_freshness: str   # "fresh" | "stale" | "critical"
+    data_freshness: str  # "fresh" | "stale" | "critical"
 
 
 # ── Endpoints ─────────────────────────────────────────────
+
 
 @app.get("/health")
 async def health():
@@ -76,7 +78,7 @@ async def get_latest_index():
 @app.get("/api/v1/index/history")
 async def get_index_history(
     from_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
-    to_date: date   = Query(..., description="End date (YYYY-MM-DD)"),
+    to_date: date = Query(..., description="End date (YYYY-MM-DD)"),
 ):
     """Return APIx time series between two dates."""
     if (to_date - from_date).days > 365:
@@ -87,9 +89,9 @@ async def get_index_history(
 
 @app.get("/api/v1/fares")
 async def get_fares(
-    route: Optional[str] = Query(None, description="e.g. DEL-BOM"),
-    date_from: Optional[date] = None,
-    date_to: Optional[date] = None,
+    route: str | None = Query(None, description="e.g. DEL-BOM"),
+    date_from: date | None = None,
+    date_to: date | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, le=200),
 ):

@@ -10,12 +10,12 @@ Sends alerts when:
 Owner: Mukta
 Related Issue: #8
 """
+
 from __future__ import annotations
 
 import os
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 import structlog
 
@@ -23,7 +23,7 @@ log = structlog.get_logger()
 
 
 class AlertLevel(Enum):
-    INFO    = "ℹ️"
+    INFO = "ℹ️"
     WARNING = "⚠️"
     CRITICAL = "🚨"
 
@@ -44,10 +44,12 @@ class TelegramAlerter:
 
     def __init__(self) -> None:
         self.bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
-        self.chat_id   = os.getenv("TELEGRAM_CHAT_ID")
-        self._enabled  = bool(self.bot_token and self.chat_id)
+        self.chat_id = os.getenv("TELEGRAM_CHAT_ID")
+        self._enabled = bool(self.bot_token and self.chat_id)
         if not self._enabled:
-            log.warning("telegram_alerter_disabled", reason="TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set")
+            log.warning(
+                "telegram_alerter_disabled", reason="TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set"
+            )
 
     def send(self, level: AlertLevel, message: str, **context) -> bool:
         """Send a formatted alert to the Telegram channel."""
@@ -68,6 +70,7 @@ class TelegramAlerter:
 
         try:
             import httpx
+
             resp = httpx.post(
                 f"https://api.telegram.org/bot{self.bot_token}/sendMessage",
                 json={

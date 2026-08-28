@@ -10,8 +10,8 @@ reviews:
   # Review Profile: 'chill' for balanced feedback, 'assertive' for more nitpicky feedback
   profile: "chill"
   
-  # Automatically approve PRs when all CodeRabbit comments are resolved
-  request_changes_workflow: false
+  # Block merge until all CodeRabbit comments are resolved
+  request_changes_workflow: true
   
   # High-level summary settings
   high_level_summary: true

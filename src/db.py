@@ -18,8 +18,7 @@ from __future__ import annotations
 
 import os
 import uuid
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 import structlog
 from sqlalchemy import (
@@ -63,7 +62,7 @@ routes = Table(
     Column("label", String(30), Computed("origin || '-' || destination", persisted=True)),
     Column("dgca_weight", Float, nullable=False, default=0.0),
     Column("is_seasonal", Boolean, nullable=False, default=False),
-    Column("created_at", DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)),
+    Column("created_at", DateTime, nullable=False, default=lambda: datetime.now(UTC)),
     UniqueConstraint("origin", "destination", name="uq_routes_origin_destination"),
 )
 
@@ -86,9 +85,7 @@ scraped_fares = Table(
     Column("source", String(50), nullable=False),
     Column("source_url", Text),
     Column("raw_html_path", Text),
-    Column(
-        "scrape_timestamp", DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
-    ),
+    Column("scrape_timestamp", DateTime, nullable=False, default=lambda: datetime.now(UTC)),
     Column("is_valid", Boolean, nullable=False, default=True),
 )
 
@@ -100,9 +97,7 @@ data_quality_log = Table(
     Column("source", String(50)),
     Column("rejection_reason", String(200), nullable=False),
     Column("raw_value", Text),
-    Column(
-        "scrape_timestamp", DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
-    ),
+    Column("scrape_timestamp", DateTime, nullable=False, default=lambda: datetime.now(UTC)),
 )
 
 scraper_runs = Table(
@@ -147,7 +142,7 @@ def _add_missing_sqlite_columns(conn: Connection) -> None:
         conn.commit()
 
 
-def ensure_schema(conn: Optional[Connection] = None) -> None:
+def ensure_schema(conn: Connection | None = None) -> None:
     """Create tables if missing (SQLite dev convenience) and seed routes.
 
     On Postgres this is a no-op for tables `db/schema.sql` already created;
@@ -186,7 +181,7 @@ def ensure_schema(conn: Optional[Connection] = None) -> None:
             conn.close()
 
 
-def get_route_id(conn: Connection, origin: str, destination: str) -> Optional[int]:
+def get_route_id(conn: Connection, origin: str, destination: str) -> int | None:
     row = conn.execute(
         select(routes.c.id).where(routes.c.origin == origin, routes.c.destination == destination)
     ).first()
@@ -256,7 +251,7 @@ def start_scraper_run(conn: Connection, source: str) -> str:
         insert(scraper_runs).values(
             id=run_id,
             source=source,
-            started_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
             status="running",
         )
     )
@@ -270,13 +265,13 @@ def finish_scraper_run(
     status: str,
     rows_scraped: int = 0,
     rows_rejected: int = 0,
-    error_message: Optional[str] = None,
+    error_message: str | None = None,
 ) -> None:
     conn.execute(
         scraper_runs.update()
         .where(scraper_runs.c.id == run_id)
         .values(
-            finished_at=datetime.now(timezone.utc),
+            finished_at=datetime.now(UTC),
             status=status,
             rows_scraped=rows_scraped,
             rows_rejected=rows_rejected,

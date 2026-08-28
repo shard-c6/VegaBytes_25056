@@ -7,11 +7,10 @@ cross-source sanity checks, and duplicate detection.
 Owner: Mufeed
 Related Issue: #6
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
-from typing import Optional
 
 import structlog
 
@@ -35,7 +34,7 @@ ROUTE_BOUNDS: dict[str, tuple[float, float]] = {
 @dataclass
 class ValidationResult:
     is_valid: bool
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class PriceValidator:
@@ -59,7 +58,7 @@ class PriceValidator:
             if not (lo <= record.total_fare <= hi):
                 return ValidationResult(
                     False,
-                    f"total_fare {record.total_fare} outside bounds [{lo}, {hi}] for {record.route}"
+                    f"total_fare {record.total_fare} outside bounds [{lo}, {hi}] for {record.route}",
                 )
 
         # 3. Base fare sanity (if available)
@@ -67,7 +66,9 @@ class PriceValidator:
             if record.base_fare <= 0:
                 return ValidationResult(False, "base_fare is non-positive")
             if record.base_fare > record.total_fare:
-                return ValidationResult(False, "base_fare exceeds total_fare — tax extraction error")
+                return ValidationResult(
+                    False, "base_fare exceeds total_fare — tax extraction error"
+                )
 
         return ValidationResult(True)
 
@@ -81,11 +82,13 @@ class PriceValidator:
             if result.is_valid:
                 valid.append(r)
             else:
-                rejected.append({
-                    "route": r.route,
-                    "source": r.source,
-                    "total_fare": r.total_fare,
-                    "rejection_reason": result.reason,
-                })
+                rejected.append(
+                    {
+                        "route": r.route,
+                        "source": r.source,
+                        "total_fare": r.total_fare,
+                        "rejection_reason": result.reason,
+                    }
+                )
                 log.warning("record_rejected", route=r.route, reason=result.reason)
         return valid, rejected

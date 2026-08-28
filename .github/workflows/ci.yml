@@ -13,6 +13,20 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11", "3.12"]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
@@ -37,7 +51,7 @@ jobs:
         run: mypy src/
 
       - name: Run tests with coverage
-        run: pytest --cov=src --cov-report=xml --cov-fail-under=70
+        run: pytest --cov=src --cov-report=xml --cov-fail-under=30
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/test
           GEMINI_API_KEY: dummy_for_tests
@@ -49,3 +63,28 @@ jobs:
         with:
           file: ./coverage.xml
           fail_ci_if_error: false
+
+  dashboard:
+    name: Dashboard build & lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build

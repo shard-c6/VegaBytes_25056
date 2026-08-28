@@ -161,7 +161,7 @@ A systematic review of [project_idea_elaboration.md](file:///Users/shard/project
 - Answer: "We classify routes as 'perennial' (DEL-BOM) vs 'seasonal' (DEL-LEH). Seasonal routes are excluded from the base index and tracked in a supplementary seasonal sub-index to prevent artificial deflation when they disappear."
 
 **Q5. "What's your data retention and privacy policy?"**
-- Answer: "We collect zero PII. We store only aggregated fare data points — no user sessions, no cookies, no personal information. Data is retained for 2 years for back-testing purposes, aligned with MoSPI's data archival norms."
+- Answer: "No PII is intentionally collected or stored. We store only aggregated fare data points — no user sessions, no cookies, no personal information. Data is retained for 2 years for back-testing purposes, aligned with MoSPI's data archival norms."
 
 **Q6. "How do you handle multi-stop flights and codeshares?"**
 - Answer: "We restrict our index to non-stop, direct flights only. Codeshares are deduplicated by matching the operating carrier's flight number. This ensures price purity — a codeshare markup would distort the base fare signal."

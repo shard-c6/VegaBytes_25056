@@ -103,8 +103,8 @@ export default function ComplianceMonitor() {
               <div className={styles.statValue} style={{ fontSize: '1.5rem', marginTop: '0.5rem' }}>100%</div>
             </div>
             <div>
-              <div className={styles.statDesc}>PII Collected</div>
-              <div className={styles.statValue} style={{ fontSize: '1.5rem', marginTop: '0.5rem', color: 'var(--success)' }}>0 Bytes</div>
+              <div className={styles.statDesc}>PII Policy</div>
+              <div className={styles.statValue} style={{ fontSize: '1rem', marginTop: '0.5rem', color: 'var(--success)' }}>Not intentionally collected</div>
             </div>
           </div>
           

@@ -6,19 +6,19 @@ Uses Playwright-stealth as primary, AI DOM parser as fallback.
 
 Owner: Shardul
 """
+
 from __future__ import annotations
 
 import os
 from datetime import date
-from typing import Optional
 
 import structlog
 from playwright.sync_api import sync_playwright
 from playwright_stealth import Stealth
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from .base import BaseScraper, FareRecord, ScraperFactory, archive_html
 from .ai_dom_parser import AIdomParser
+from .base import BaseScraper, FareRecord, ScraperFactory, archive_html
 
 log = structlog.get_logger()
 
@@ -46,7 +46,7 @@ class AirIndiaDirectScraper(BaseScraper):
         url = AIRINDIA_SEARCH_URL.format(
             origin=origin,
             destination=destination,
-            date=departure_date.strftime("%d-%m-%Y"), # Adjust format if needed
+            date=departure_date.strftime("%d-%m-%Y"),  # Adjust format if needed
         )
         self.log.info("scraping", url=url)
 
@@ -65,7 +65,7 @@ class AirIndiaDirectScraper(BaseScraper):
             page = context.new_page()
             Stealth().apply_stealth_sync(page)
             page.goto(url, timeout=60_000)
-            
+
             # Wait for either the search results or a reasonable timeout
             try:
                 page.wait_for_load_state("networkidle", timeout=20_000)
@@ -105,7 +105,7 @@ class AirIndiaDirectScraper(BaseScraper):
                         "departure_date": departure_date,
                         "booking_window": booking_window,
                         "cabin_class": cabin_class,
-                    }
+                    },
                 )
 
             for r in records:
@@ -129,23 +129,27 @@ class AirIndiaDirectScraper(BaseScraper):
                 total_text = card.query_selector(".price-placeholder")
                 if not total_text:
                     continue
-                total_fare = float(total_text.inner_text().replace("₹", "").replace(",", "").strip())
-                records.append(FareRecord(
-                    route=f"{origin}-{destination}",
-                    airline="Air India",
-                    flight_number=None,
-                    cabin_class="economy",
-                    departure_date=departure_date,
-                    booking_window=booking_window,
-                    base_fare=None,
-                    fuel_surcharge=None,
-                    udf=None,
-                    psf=None,
-                    gst=None,
-                    total_fare=total_fare,
-                    source=self.SOURCE_ID,
-                    source_url=page.url,
-                ))
+                total_fare = float(
+                    total_text.inner_text().replace("₹", "").replace(",", "").strip()
+                )
+                records.append(
+                    FareRecord(
+                        route=f"{origin}-{destination}",
+                        airline="Air India",
+                        flight_number=None,
+                        cabin_class="economy",
+                        departure_date=departure_date,
+                        booking_window=booking_window,
+                        base_fare=None,
+                        fuel_surcharge=None,
+                        udf=None,
+                        psf=None,
+                        gst=None,
+                        total_fare=total_fare,
+                        source=self.SOURCE_ID,
+                        source_url=page.url,
+                    )
+                )
             except Exception as e:
                 self.log.warning("selector_parse_error", error=str(e))
         return records
