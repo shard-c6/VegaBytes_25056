@@ -1,0 +1,43 @@
+<!--
+  MakeMyTrip results fixture, mirroring the live DOM captured via DevTools
+  (data-test="component-cardBody" per flight, data-test="component-final-fare"
+  for the standard fare, coupon discount in a sibling <p class="disc-applied">).
+  Replace with a saved real desktop-width page when available; the airline
+  element was not yet captured, so rows extract with airline="Unknown".
+-->
+<html><body>
+  <div class="listingBodyWrapper">
+    <div class="listingPageContent">
+      <div id="flightsContainer" class="container-overflow">
+        <div class="scrollRoot">
+
+          <div class="listing-card-wrpr">
+            <div class="flightCardBody fli-list one-way" id="RKEY:aaa:55_0">
+              <div data-test="component-cardBody" class="fli-list-body-section">
+                <div class="dept-options"><div class="dept-options-section">
+                  <div class="price text-right">
+                    <p><span data-test="component-final-fare" class="actual-price"><span>&#8377; 6,496</span></span></p>
+                    <p class="disc-applied">Get Flat 12% OFF using MMTHSBCFEST | Flat &#8377; 256 OFF</p>
+                  </div>
+                </div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="listing-card-wrpr">
+            <div class="flightCardBody fli-list one-way" id="RKEY:bbb:55_1">
+              <div data-test="component-cardBody" class="fli-list-body-section">
+                <div class="dept-options"><div class="dept-options-section">
+                  <div class="price text-right">
+                    <p><span data-test="component-final-fare" class="actual-price"><span>&#8377;5,782</span></span></p>
+                  </div>
+                </div></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</body></html>
