@@ -1,10 +1,10 @@
 """
 Offline regression tests for the MakeMyTrip selector path.
 
-Runs against a committed fixture that mirrors the live MMT DOM (data-test hooks
-captured via DevTools) — no browser, no network. Guards that the confirmed
-selectors keep extracting the standard fare and, crucially, do NOT pick up the
-coupon-discount text that sits in a sibling element.
+Runs against a fixture trimmed from a REAL MakeMyTrip BOM-BLR results page
+(saved via DevTools, icons/scripts stripped) — no browser, no network. Guards
+that the captured data-test selectors keep extracting the real carriers and
+standard fares, and do NOT pick up the coupon-discount text.
 """
 
 from __future__ import annotations
@@ -29,20 +29,35 @@ def _extract():
     )
 
 
-def test_extracts_standard_fares_not_coupon_price():
-    records = _extract()
-    assert len(records) == 2
-    # The pre-coupon fares, not the "12% OFF"/"₹256 OFF" discount amounts.
-    assert [r.total_fare for r in records] == [6496.0, 5782.0]
+def test_extracts_all_real_cards():
+    # The saved page had exactly 10 flight cards.
+    assert len(_extract()) == 10
 
 
-def test_source_and_route_are_set():
+def test_real_fares_are_pre_coupon_standard_prices():
+    fares = [r.total_fare for r in _extract()]
+    assert fares == [6496.0, 6517.0, 6517.0, 6487.0, 6487.0, 6487.0, 6487.0, 6570.0, 6741.0, 6914.0]
+
+
+def test_real_per_card_airlines():
+    airlines = [r.airline for r in _extract()]
+    assert airlines == [
+        "Akasa Air",
+        "Air India",
+        "Air India",
+        "IndiGo",
+        "IndiGo",
+        "IndiGo",
+        "IndiGo",
+        "IndiGo",
+        "Air India",
+        "IndiGo",
+    ]
+    # OTA carriers are read per-card, never the bogus "MakeMyTrip OTA" literal.
+    assert "MakeMyTrip OTA" not in airlines
+
+
+def test_route_and_source():
     r = _extract()[0]
     assert r.source == "makemytrip"
     assert r.route == "BOM-BLR"
-
-
-def test_airline_pending_defaults_to_unknown():
-    # Documents current state: the airline element is not yet captured, so the
-    # OTA rows carry "Unknown" until SELECTORS["airline"] is filled in.
-    assert _extract()[0].airline == "Unknown"

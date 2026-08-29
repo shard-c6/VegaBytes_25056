@@ -44,11 +44,11 @@ class MakeMyTripScraper(BaseScraper):
     #   total_fare   [data-test="component-final-fare"] — the standard fare; the
     #                coupon discount lives in a sibling <p class="disc-applied">,
     #                so this is the pre-coupon price we want for the index.
-    #   airline      TODO: capture the "Akasa Air"/carrier element (not yet
-    #                inspected). Until set, MMT rows carry airline="Unknown".
+    #   airline      [data-test="component-airline-heading"] — per-card carrier
     SELECTORS = {
         "card": "[data-test='component-cardBody']",
         "total_fare": "[data-test='component-final-fare']",
+        "airline": "[data-test='component-airline-heading']",
     }
     AI_FALLBACK_SELECTOR = "#flightsContainer, .listingBodyWrapper"
 
