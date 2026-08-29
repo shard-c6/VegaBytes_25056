@@ -26,6 +26,7 @@ def fresh_engine(monkeypatch):
     monkeypatch.setattr(db, "engine", engine)
     db.ensure_schema()
     yield
+    engine.dispose()
 
 
 def make_record(**kwargs) -> FareRecord:
@@ -47,7 +48,7 @@ def make_record(**kwargs) -> FareRecord:
         raw_html_path="data/raw/indigo_direct/DEL-BOM/x.html.gz",
     )
     defaults.update(kwargs)
-    return FareRecord(**defaults)
+    return FareRecord(**defaults)  # type: ignore[arg-type]
 
 
 def test_ensure_schema_seeds_routes():

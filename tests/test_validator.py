@@ -27,7 +27,7 @@ def make_record(**kwargs) -> FareRecord:
         source_url=None,
     )
     defaults.update(kwargs)
-    return FareRecord(**defaults)
+    return FareRecord(**defaults)  # type: ignore[arg-type]
 
 
 validator = PriceValidator()
