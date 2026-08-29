@@ -1,0 +1,23 @@
+<!--
+  Synthetic IndiGo-shaped results page for offline extraction tests.
+  It matches IndigoDirectScraper.SELECTORS (.fare-card / .total-price /
+  .flight-number). When real goindigo.in selectors are captured, replace
+  BOTH this fixture (with a saved real page) AND the SELECTORS, and this
+  test keeps guarding extraction against silent breakage.
+-->
+<html><body>
+  <main class="flight-listing">
+    <div class="fare-card">
+      <span class="flight-number">6E-2341</span>
+      <span class="total-price">₹ 4,789</span>
+    </div>
+    <div class="fare-card">
+      <span class="flight-number">6E-5108</span>
+      <span class="total-price">₹5,320</span>
+    </div>
+    <div class="fare-card">
+      <!-- sold out: no price element, must be skipped, not crash -->
+      <span class="flight-number">6E-9002</span>
+    </div>
+  </main>
+</body></html>

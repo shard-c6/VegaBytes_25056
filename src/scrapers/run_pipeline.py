@@ -5,6 +5,9 @@ end to end (issue #17).
 
 Usage:
     python -m src.scrapers.run_pipeline
+    python -m src.scrapers.run_pipeline --source indigo_direct --route DEL-BOM --window 7
+    python -m src.scrapers.run_pipeline --fixture data/raw/indigo_direct/DEL-BOM/x.html.gz \
+        --source indigo_direct --route DEL-BOM --window 7   # offline, no browser
 
 Env:
     DATABASE_URL   defaults to sqlite:///vegabytes.db (see src/db.py)
@@ -19,7 +22,10 @@ Related Issue: #17
 
 from __future__ import annotations
 
+import argparse
+import gzip
 import os
+import pathlib
 import time
 import traceback
 from datetime import date, timedelta
@@ -57,8 +63,15 @@ BOOKING_WINDOWS = [1, 7, 30]
 INTER_ROUTE_DELAY_SECONDS = 5.0
 
 
-def run_source(source_id: str, proxy: str | None) -> None:
+def run_source(
+    source_id: str,
+    proxy: str | None,
+    routes: list[tuple[str, str]] | None = None,
+    windows: list[int] | None = None,
+) -> None:
     """Scrape every route × booking window for one source and persist results."""
+    routes = routes or ROUTES
+    windows = windows or BOOKING_WINDOWS
     validator = PriceValidator()
 
     with db.engine.connect() as conn:
@@ -72,8 +85,8 @@ def run_source(source_id: str, proxy: str | None) -> None:
     try:
         scraper = ScraperFactory.get(source_id, proxy=proxy)
 
-        for origin, destination in ROUTES:
-            for window in BOOKING_WINDOWS:
+        for origin, destination in routes:
+            for window in windows:
                 departure_date = date.today() + timedelta(days=window)
                 route = f"{origin}-{destination}"
                 log.info("scraping_route", source=source_id, route=route, window=window)
@@ -119,7 +132,43 @@ def run_source(source_id: str, proxy: str | None) -> None:
     )
 
 
-def main() -> None:
+def _parse_route(route: str) -> tuple[str, str]:
+    origin, _, destination = route.partition("-")
+    if not origin or not destination:
+        raise argparse.ArgumentTypeError(f"route must look like DEL-BOM, got {route!r}")
+    return origin.upper(), destination.upper()
+
+
+def run_fixture(source_id: str, route: tuple[str, str], window: int, fixture_path: str) -> None:
+    """
+    Offline extraction: run one source's selectors against a saved HTML file
+    (plain or .gz) — no browser, no network. The fast loop for developing real
+    selectors against an archived page before pointing the scraper at the live
+    site. Prints the FareRecords it would have persisted.
+    """
+    path = pathlib.Path(fixture_path)
+    opener = gzip.open if path.suffix == ".gz" else open
+    with opener(path, "rt", encoding="utf-8") as f:
+        html = f.read()
+
+    scraper = ScraperFactory.get(source_id)
+    origin, destination = route
+    records = scraper.extract_fares_from_html(
+        html,
+        origin,
+        destination,
+        date.today() + timedelta(days=window),
+        window,
+        source_url=str(path),
+    )
+    log.info("fixture_extract_complete", source=source_id, records=len(records))
+    for r in records:
+        print(
+            f"  {r.airline:12} {r.flight_number or '-':10} ₹{r.total_fare:>9,.0f}  ({r.cabin_class})"
+        )
+
+
+def main(argv: list[str] | None = None) -> None:
     structlog.configure(
         processors=[
             structlog.processors.add_log_level,
@@ -127,6 +176,43 @@ def main() -> None:
             structlog.dev.ConsoleRenderer(),
         ]
     )
+
+    parser = argparse.ArgumentParser(description="VegaBytes scraper pipeline")
+    parser.add_argument(
+        "--source",
+        choices=SOURCES,
+        action="append",
+        help="Limit to this source (repeatable). Default: all.",
+    )
+    parser.add_argument(
+        "--route",
+        type=_parse_route,
+        action="append",
+        help="Limit to this route, e.g. DEL-BOM (repeatable). Default: all.",
+    )
+    parser.add_argument(
+        "--window",
+        type=int,
+        action="append",
+        help="Limit to this booking window in days (repeatable). Default: 1,7,30.",
+    )
+    parser.add_argument(
+        "--fixture",
+        help="Extract from a saved HTML file offline (no browser). "
+        "Requires exactly one --source/--route/--window.",
+    )
+    args = parser.parse_args(argv)
+
+    sources = args.source or SOURCES
+    routes = args.route or ROUTES
+    windows = args.window or BOOKING_WINDOWS
+
+    if args.fixture:
+        if not (len(sources) == 1 and len(routes) == 1 and len(windows) == 1):
+            parser.error("--fixture needs exactly one --source, one --route and one --window")
+        run_fixture(sources[0], routes[0], windows[0], args.fixture)
+        return
+
     db.ensure_schema()
 
     proxy = os.getenv("HTTP_PROXY")
@@ -134,9 +220,9 @@ def main() -> None:
         # Never log the raw URL — it may embed proxy credentials.
         log.info("using_proxy", configured=True)
 
-    for source_id in SOURCES:
+    for source_id in sources:
         try:
-            run_source(source_id, proxy)
+            run_source(source_id, proxy, routes, windows)
         except Exception:
             log.error("source_run_uncaught_error", source=source_id)
             traceback.print_exc()
