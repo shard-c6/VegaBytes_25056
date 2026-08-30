@@ -43,16 +43,16 @@ class IndigoDirectScraper(BaseScraper):
     REQUEST_DELAY = 35.0  # slightly above minimum to be safe
     AIRLINE = "IndiGo"
 
-    # UPDATE THESE after inspecting a live goindigo.in results page.
-    # Placeholders match no real element — scrapes fall back to the AI parser
-    # until these are real. A committed fixture + tests/test_indigo_selectors.py
-    # keep them honest once set.
+    # Captured from a real goindigo.in flight-select page (BOM-BLR). Each
+    # .fare-accordion is one flight and holds BOTH a business and an economy
+    # fare, so total_fare is scoped to .economy-class-item to take the economy
+    # "Starts at" price (the lowest economy bucket) and never the business fare.
     SELECTORS = {
-        "card": ".fare-card",  # UPDATE THIS
-        "total_fare": ".total-price",  # UPDATE THIS
-        "flight_number": ".flight-number",  # UPDATE THIS (optional)
+        "card": ".fare-accordion",
+        "total_fare": ".economy-class-item .selected-fare__fare-price",
+        "flight_number": ".flight-number",
     }
-    AI_FALLBACK_SELECTOR = ".flight-listing, .fare-card, main"
+    AI_FALLBACK_SELECTOR = ".fare-accordion, .flight-listing, main"
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=60, max=180))
     def scrape_route(
