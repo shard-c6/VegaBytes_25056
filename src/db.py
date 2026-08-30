@@ -42,6 +42,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.engine import Connection, Engine
 
+from .config import ROUTES
 from .scrapers.base import FareRecord
 
 log = structlog.get_logger()
@@ -114,14 +115,9 @@ scraper_runs = Table(
     Column("status", String(20), nullable=False, default="running"),
 )
 
-# Mirrors the seed data in db/schema.sql — weights are TBD (see issue #2).
-_SEED_ROUTES = [
-    ("DEL", "BOM"),
-    ("BLR", "DEL"),
-    ("DEL", "BLR"),
-    ("BOM", "BLR"),
-    ("HYD", "DEL"),
-]
+# Single source of truth for which routes the DB seeds/accepts —
+# src/config.ROUTES, mirrored in db/schema.sql for Postgres. Weights TBD (#2).
+_SEED_ROUTES = ROUTES
 
 
 def _add_missing_sqlite_columns(conn: Connection) -> None:

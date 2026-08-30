@@ -52,10 +52,14 @@ def make_record(**kwargs) -> FareRecord:
 
 
 def test_ensure_schema_seeds_routes():
+    from src.config import ROUTES
+
     with db.engine.connect() as conn:
         rows = list(conn.execute(select(db.routes.c.origin, db.routes.c.destination)))
     assert ("DEL", "BOM") in rows
-    assert len(rows) == 5
+    # Seeds exactly the config basket (single source of truth), no drift.
+    assert len(rows) == len(ROUTES)
+    assert set(rows) == set(ROUTES)
 
 
 def test_route_label_is_generated():

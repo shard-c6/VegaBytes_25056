@@ -24,18 +24,17 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from .base import BaseScraper, FareRecord, ScraperFactory
 
-# Placeholder URL. Will be updated once manual inspection is done.
-MMT_SEARCH_URL = (
-    "https://www.makemytrip.com/flight/search?itinerary={origin}-{destination}-{date}"
-    "&tripType=O&paxType=A-1_C-0_I-0&intl=false&cabinClass=E"
-)
-
 
 @ScraperFactory.register
 class MakeMyTripScraper(BaseScraper):
     SOURCE_ID = "makemytrip"
     REQUEST_DELAY = 30.0
     AIRLINE = None  # OTA — carrier is per-card, read via SELECTORS["airline"]
+    SEARCH_URL = (
+        "https://www.makemytrip.com/flight/search?itinerary={origin}-{destination}-{date}"
+        "&tripType=O&paxType=A-1_C-0_I-0&intl=false&cabinClass=E"
+    )
+    DATE_FORMAT = "%d/%m/%Y"  # MMT uses DD/MM/YYYY in the itinerary URL
 
     # Captured from a live MakeMyTrip results page via DevTools. We target the
     # stable data-test hooks (breakpoint-independent) rather than styling
@@ -61,11 +60,7 @@ class MakeMyTripScraper(BaseScraper):
         booking_window: int,
         cabin_class: str = "economy",
     ) -> list[FareRecord]:
-        url = MMT_SEARCH_URL.format(
-            origin=origin,
-            destination=destination,
-            date=departure_date.strftime("%d/%m/%Y"),  # MMT often uses DD/MM/YYYY in URL
-        )
+        url = self.build_url(origin, destination, departure_date)
         return self._fetch_and_extract(
             url,
             origin,

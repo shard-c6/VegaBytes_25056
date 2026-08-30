@@ -21,12 +21,6 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from .base import BaseScraper, FareRecord, ScraperFactory
 
-INDIGO_SEARCH_URL = (
-    "https://www.goindigo.in/flight-booking.html"
-    "?origin={origin}&destination={destination}"
-    "&departure={date}&adult=1&child=0&infant=0&tripType=O&cabin=ECONOMY"
-)
-
 
 @ScraperFactory.register
 class IndigoDirectScraper(BaseScraper):
@@ -42,6 +36,12 @@ class IndigoDirectScraper(BaseScraper):
     SOURCE_ID = "indigo_direct"
     REQUEST_DELAY = 35.0  # slightly above minimum to be safe
     AIRLINE = "IndiGo"
+    SEARCH_URL = (
+        "https://www.goindigo.in/flight-booking.html"
+        "?origin={origin}&destination={destination}"
+        "&departure={date}&adult=1&child=0&infant=0&tripType=O&cabin=ECONOMY"
+    )
+    DATE_FORMAT = "%Y-%m-%d"
 
     # Captured from a real goindigo.in flight-select page (BOM-BLR). Each
     # .fare-accordion is one flight and holds BOTH a business and an economy
@@ -63,11 +63,7 @@ class IndigoDirectScraper(BaseScraper):
         booking_window: int,
         cabin_class: str = "economy",
     ) -> list[FareRecord]:
-        url = INDIGO_SEARCH_URL.format(
-            origin=origin,
-            destination=destination,
-            date=departure_date.strftime("%Y-%m-%d"),
-        )
+        url = self.build_url(origin, destination, departure_date)
         return self._fetch_and_extract(
             url, origin, destination, departure_date, booking_window, cabin_class
         )
