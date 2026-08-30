@@ -46,21 +46,17 @@ load_dotenv()
 import src.scrapers.airindia_direct  # noqa: E402,F401
 import src.scrapers.indigo_direct  # noqa: E402,F401
 import src.scrapers.makemytrip  # noqa: E402,F401
-from src import db  # noqa: E402
+from src import config, db  # noqa: E402
 from src.etl.validator import PriceValidator  # noqa: E402
 from src.scrapers.base import ScraperFactory  # noqa: E402
 
 log = structlog.get_logger()
 
 SOURCES = ["indigo_direct", "airindia_direct", "makemytrip"]
-ROUTES = [
-    ("DEL", "BOM"),
-    ("BLR", "DEL"),
-    ("DEL", "BLR"),
-    ("BOM", "BLR"),
-    ("HYD", "DEL"),
-]
-BOOKING_WINDOWS = [1, 7, 30]
+# Route basket and advance-purchase windows come from src/config (single source
+# of truth, PS-aligned) so the scraper and the DB seed can never drift apart.
+ROUTES = config.ROUTES
+BOOKING_WINDOWS = config.BOOKING_WINDOWS
 INTER_ROUTE_DELAY_SECONDS = 5.0
 
 
@@ -334,11 +330,29 @@ def main(argv: list[str] | None = None) -> None:
         help="With --csv: append to the file (no repeated header) instead of "
         "overwriting — build one combined CSV across sources/routes.",
     )
+    parser.add_argument(
+        "--print-urls",
+        action="store_true",
+        help="Print the live search URL each source would hit for every "
+        "route × window, then exit. No scraping — validate the URL templates "
+        "in a browser before a live run.",
+    )
     args = parser.parse_args(argv)
 
     sources = args.source or SOURCES
     routes = args.route or ROUTES
     windows = args.window or BOOKING_WINDOWS
+
+    if args.print_urls:
+        for source_id in sources:
+            scraper = ScraperFactory.get(source_id)
+            for origin, destination in routes:
+                for window in windows:
+                    dep = date.today() + timedelta(days=window)
+                    print(
+                        f"{source_id:16} {origin}-{destination} T+{window:<2} {scraper.build_url(origin, destination, dep)}"
+                    )
+        return
 
     if args.fixture:
         if not (len(sources) == 1 and len(routes) == 1 and len(windows) == 1):

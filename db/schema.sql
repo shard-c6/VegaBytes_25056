@@ -81,11 +81,13 @@ CREATE TABLE IF NOT EXISTS scraper_runs (
     status          VARCHAR(20) NOT NULL DEFAULT 'running' -- running | success | failed
 );
 
--- ── Seed: initial routes (top-5 DGCA routes, weights TBD by Ankita) ──
+-- ── Seed: representative DGCA city-pairs (PS 26056), weights TBD by Ankita ──
+-- Keep in sync with src/config.ROUTES (the single source of truth).
 INSERT INTO routes (origin, destination, dgca_weight, is_seasonal) VALUES
   ('DEL', 'BOM', 0.0, FALSE),
-  ('BLR', 'DEL', 0.0, FALSE),
   ('DEL', 'BLR', 0.0, FALSE),
   ('BOM', 'BLR', 0.0, FALSE),
-  ('HYD', 'DEL', 0.0, FALSE)
+  ('DEL', 'CCU', 0.0, FALSE),
+  ('BLR', 'HYD', 0.0, FALSE),
+  ('MAA', 'DEL', 0.0, FALSE)
 ON CONFLICT DO NOTHING;

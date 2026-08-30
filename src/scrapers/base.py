@@ -117,9 +117,30 @@ class BaseScraper(abc.ABC):
     # Container the AI fallback reads its HTML fragment from when selectors break.
     AI_FALLBACK_SELECTOR: str = "main"
 
+    # Search-URL template with {origin}/{destination}/{date} placeholders, and
+    # the strftime format the site expects for {date}. The same selectors work
+    # for every route, so a route change is purely a URL substitution — that is
+    # what build_url() does.
+    SEARCH_URL: str = ""
+    DATE_FORMAT: str = "%Y-%m-%d"
+
     def __init__(self, proxy: str | None = None):
         self.proxy = proxy
         self.log = structlog.get_logger(source=self.SOURCE_ID)
+
+    def build_url(self, origin: str, destination: str, departure_date: date) -> str:
+        """
+        Build the live search URL for one route + date by substituting into
+        SEARCH_URL. Pure and network-free, so it is unit-testable and can be
+        previewed (run_pipeline --print-urls) without scraping anything.
+        """
+        if not self.SEARCH_URL:
+            raise NotImplementedError(f"{self.SOURCE_ID}: SEARCH_URL not set")
+        return self.SEARCH_URL.format(
+            origin=origin,
+            destination=destination,
+            date=departure_date.strftime(self.DATE_FORMAT),
+        )
 
     # ── Extraction (browser-independent, unit-testable) ───────────────────
     @staticmethod

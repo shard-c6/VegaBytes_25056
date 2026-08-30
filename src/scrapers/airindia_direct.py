@@ -19,18 +19,18 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from .base import BaseScraper, FareRecord, ScraperFactory
 
-# Placeholder URL. Will be updated once manual inspection is done.
-AIRINDIA_SEARCH_URL = (
-    "https://www.airindia.com/in/en/book/search-flights.html"
-    "?origin={origin}&destination={destination}&date={date}"
-)
-
 
 @ScraperFactory.register
 class AirIndiaDirectScraper(BaseScraper):
     SOURCE_ID = "airindia_direct"
     REQUEST_DELAY = 30.0
     AIRLINE = "Air India"
+    # Placeholder URL. Will be updated once a live airindia.com page is captured.
+    SEARCH_URL = (
+        "https://www.airindia.com/in/en/book/search-flights.html"
+        "?origin={origin}&destination={destination}&date={date}"
+    )
+    DATE_FORMAT = "%d-%m-%Y"
 
     # UPDATE THESE after inspecting a live airindia.com results page.
     SELECTORS = {
@@ -49,11 +49,7 @@ class AirIndiaDirectScraper(BaseScraper):
         booking_window: int,
         cabin_class: str = "economy",
     ) -> list[FareRecord]:
-        url = AIRINDIA_SEARCH_URL.format(
-            origin=origin,
-            destination=destination,
-            date=departure_date.strftime("%d-%m-%Y"),  # Adjust format if needed
-        )
+        url = self.build_url(origin, destination, departure_date)
         return self._fetch_and_extract(
             url,
             origin,
