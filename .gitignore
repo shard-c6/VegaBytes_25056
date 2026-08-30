@@ -46,3 +46,7 @@ coverage.xml
 # Data (raw scrapes - too large for git)
 data/raw/
 data/cache/
+
+# Saved-page asset dumps ("Webpage, Complete" _files/ folders) — keep the .html
+# pages and CSV exports, drop the multi-MB JS/CSS/image assets we never parse.
+scrapped-data-htmlfiles/*/

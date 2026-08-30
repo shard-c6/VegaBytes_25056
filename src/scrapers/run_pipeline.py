@@ -23,12 +23,13 @@ Related Issue: #17
 from __future__ import annotations
 
 import argparse
+import csv
 import gzip
 import os
 import pathlib
 import time
 import traceback
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import structlog
 from dotenv import load_dotenv
@@ -139,6 +140,66 @@ def _parse_route(route: str) -> tuple[str, str]:
     return origin.upper(), destination.upper()
 
 
+CSV_COLUMNS = [
+    "captured_at",
+    "source",
+    "route",
+    "airline",
+    "flight_number",
+    "cabin_class",
+    "booking_window",
+    "departure_date",
+    "base_fare",
+    "fuel_surcharge",
+    "udf",
+    "psf",
+    "gst",
+    "total_fare",
+    "source_url",
+]
+
+
+def write_csv(records: list, csv_path: str, append: bool = False) -> int:
+    """
+    Write fare records to a CSV — the offline fallback the demo runbook's
+    Layer 3 relies on (a portable snapshot that needs no DB or network).
+
+    `captured_at` is stamped at export time; for a hand-saved page that is the
+    ingest moment, not a precise scrape instant — good enough for a fallback
+    snapshot, and honest about what it is.
+    """
+    path = pathlib.Path(csv_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    now = datetime.now(UTC).isoformat()
+    mode = "a" if append and path.exists() else "w"
+    with path.open(mode, newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS)
+        if mode == "w":
+            writer.writeheader()
+        for r in records:
+            writer.writerow(
+                {
+                    "captured_at": now,
+                    "source": r.source,
+                    "route": r.route,
+                    "airline": r.airline,
+                    "flight_number": r.flight_number,
+                    "cabin_class": r.cabin_class,
+                    "booking_window": r.booking_window,
+                    "departure_date": r.departure_date.isoformat(),
+                    "base_fare": r.base_fare,
+                    "fuel_surcharge": r.fuel_surcharge,
+                    "udf": r.udf,
+                    "psf": r.psf,
+                    "gst": r.gst,
+                    "total_fare": r.total_fare,
+                    "source_url": r.source_url,
+                }
+            )
+    log.info("csv_written", path=str(path), rows=len(records), mode=mode)
+    return len(records)
+
+
 def run_fixture(
     source_id: str,
     route: tuple[str, str],
@@ -146,6 +207,8 @@ def run_fixture(
     fixture_path: str,
     persist: bool = False,
     departure: date | None = None,
+    csv_path: str | None = None,
+    csv_append: bool = False,
 ) -> int:
     """
     Extract one source's fares from a saved HTML file (plain or .gz) — no
@@ -182,6 +245,9 @@ def run_fixture(
         print(
             f"  {r.airline:12} {r.flight_number or '-':10} ₹{r.total_fare:>9,.0f}  ({r.cabin_class})"
         )
+
+    if csv_path:
+        write_csv(records, csv_path, append=csv_append)
 
     if not persist:
         return 0
@@ -257,6 +323,17 @@ def main(argv: list[str] | None = None) -> None:
         help="With --fixture: the flight's departure date (YYYY-MM-DD). "
         "Defaults to today + window; set it for an accurately captured page.",
     )
+    parser.add_argument(
+        "--csv",
+        help="With --fixture: also write the extracted rows to this CSV "
+        "(offline fallback). Combine with --csv-append to accumulate routes.",
+    )
+    parser.add_argument(
+        "--csv-append",
+        action="store_true",
+        help="With --csv: append to the file (no repeated header) instead of "
+        "overwriting — build one combined CSV across sources/routes.",
+    )
     args = parser.parse_args(argv)
 
     sources = args.source or SOURCES
@@ -273,10 +350,12 @@ def main(argv: list[str] | None = None) -> None:
             args.fixture,
             persist=args.persist,
             departure=args.departure,
+            csv_path=args.csv,
+            csv_append=args.csv_append,
         )
         return
-    if args.persist or args.departure:
-        parser.error("--persist/--departure only apply with --fixture")
+    if args.persist or args.departure or args.csv:
+        parser.error("--persist/--departure/--csv only apply with --fixture")
 
     db.ensure_schema()
 

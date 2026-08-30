@@ -55,3 +55,15 @@ def test_fixture_without_persist_returns_zero(temp_db):
 
     # persist=False extracts/prints but writes nothing.
     assert run_pipeline.run_fixture("makemytrip", ("BOM", "BLR"), 1, str(FIXTURE)) == 0
+
+
+def test_fixture_csv_export(tmp_path):
+    from src.scrapers import run_pipeline
+
+    out = tmp_path / "fares.csv"
+    n = run_pipeline.run_fixture("makemytrip", ("BOM", "BLR"), 1, str(FIXTURE), csv_path=str(out))
+    assert n == 0  # csv-only (no persist) returns 0 persisted
+    lines = out.read_text(encoding="utf-8").strip().splitlines()
+    assert lines[0].split(",")[:4] == ["captured_at", "source", "route", "airline"]
+    assert len(lines) == 11  # header + 10 fares
+    assert "makemytrip,BOM-BLR" in lines[1]
