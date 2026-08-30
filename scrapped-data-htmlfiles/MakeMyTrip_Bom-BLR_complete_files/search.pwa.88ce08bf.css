@@ -1,0 +1,1 @@
+.listingSectionEnter{animation:listingSectionFadeIn .3s ease forwards}.listingSectionPlaceholder{pointer-events:none;width:100%}@keyframes listingSectionFadeIn{0%{transform:translateY(6px)}to{transform:none}}
