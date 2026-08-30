@@ -139,12 +139,27 @@ def _parse_route(route: str) -> tuple[str, str]:
     return origin.upper(), destination.upper()
 
 
-def run_fixture(source_id: str, route: tuple[str, str], window: int, fixture_path: str) -> None:
+def run_fixture(
+    source_id: str,
+    route: tuple[str, str],
+    window: int,
+    fixture_path: str,
+    persist: bool = False,
+    departure: date | None = None,
+) -> int:
     """
-    Offline extraction: run one source's selectors against a saved HTML file
-    (plain or .gz) — no browser, no network. The fast loop for developing real
-    selectors against an archived page before pointing the scraper at the live
-    site. Prints the FareRecords it would have persisted.
+    Extract one source's fares from a saved HTML file (plain or .gz) — no
+    browser, no network.
+
+    Two uses:
+      • selector development (persist=False): prints the FareRecords the
+        selectors would produce, the fast loop for tuning them offline.
+      • manual ingest (persist=True): validates and writes the rows to the DB,
+        exactly like a live scrape. Turns a page captured by hand (or by any
+        out-of-band collector) into real, timestamped rows — the egress-proof
+        path to real data when the live site can't be reached from here.
+
+    Returns the number of rows persisted (0 when persist=False).
     """
     path = pathlib.Path(fixture_path)
     opener = gzip.open if path.suffix == ".gz" else open
@@ -153,11 +168,12 @@ def run_fixture(source_id: str, route: tuple[str, str], window: int, fixture_pat
 
     scraper = ScraperFactory.get(source_id)
     origin, destination = route
+    departure_date = departure or (date.today() + timedelta(days=window))
     records = scraper.extract_fares_from_html(
         html,
         origin,
         destination,
-        date.today() + timedelta(days=window),
+        departure_date,
         window,
         source_url=str(path),
     )
@@ -166,6 +182,34 @@ def run_fixture(source_id: str, route: tuple[str, str], window: int, fixture_pat
         print(
             f"  {r.airline:12} {r.flight_number or '-':10} ₹{r.total_fare:>9,.0f}  ({r.cabin_class})"
         )
+
+    if not persist:
+        return 0
+
+    db.ensure_schema()
+    validator = PriceValidator()
+    valid, rejected = validator.validate_batch(records)
+    with db.engine.connect() as conn:
+        run_id = db.start_scraper_run(conn, source_id)
+    with db.engine.connect() as conn:
+        inserted = db.insert_scraped_fares(conn, valid)
+        rejected_n = db.insert_rejections(conn, source_id, rejected)
+    with db.engine.connect() as conn:
+        db.finish_scraper_run(
+            conn,
+            run_id,
+            "success" if inserted else "failed",
+            inserted,
+            rejected_n,
+            None if inserted else "zero rows persisted from fixture",
+        )
+    log.info(
+        "fixture_persist_complete",
+        source=source_id,
+        inserted=inserted,
+        rejected=rejected_n,
+    )
+    return inserted
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -201,6 +245,18 @@ def main(argv: list[str] | None = None) -> None:
         help="Extract from a saved HTML file offline (no browser). "
         "Requires exactly one --source/--route/--window.",
     )
+    parser.add_argument(
+        "--persist",
+        action="store_true",
+        help="With --fixture: validate and write the extracted rows to the DB "
+        "(manual ingest of a hand-captured page), not just print them.",
+    )
+    parser.add_argument(
+        "--departure",
+        type=date.fromisoformat,
+        help="With --fixture: the flight's departure date (YYYY-MM-DD). "
+        "Defaults to today + window; set it for an accurately captured page.",
+    )
     args = parser.parse_args(argv)
 
     sources = args.source or SOURCES
@@ -210,8 +266,17 @@ def main(argv: list[str] | None = None) -> None:
     if args.fixture:
         if not (len(sources) == 1 and len(routes) == 1 and len(windows) == 1):
             parser.error("--fixture needs exactly one --source, one --route and one --window")
-        run_fixture(sources[0], routes[0], windows[0], args.fixture)
+        run_fixture(
+            sources[0],
+            routes[0],
+            windows[0],
+            args.fixture,
+            persist=args.persist,
+            departure=args.departure,
+        )
         return
+    if args.persist or args.departure:
+        parser.error("--persist/--departure only apply with --fixture")
 
     db.ensure_schema()
 
