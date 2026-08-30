@@ -46,3 +46,6 @@ coverage.xml
 # Data (raw scrapes - too large for git)
 data/raw/
 data/cache/
+scrapped-data-htmlfiles/Inidigo_complete_BOM-BLR
+scrapped-data-htmlfiles/MakeMyTrip_complete_Bom-BLR_complete_files
+
