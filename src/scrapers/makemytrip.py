@@ -37,14 +37,20 @@ class MakeMyTripScraper(BaseScraper):
     REQUEST_DELAY = 30.0
     AIRLINE = None  # OTA — carrier is per-card, read via SELECTORS["airline"]
 
-    # UPDATE THESE after inspecting a live MakeMyTrip results page.
+    # Captured from a live MakeMyTrip results page via DevTools. We target the
+    # stable data-test hooks (breakpoint-independent) rather than styling
+    # classes like fontSize18/blackText, which churn on every redesign.
+    #   card         [data-test="component-cardBody"] — one per flight
+    #   total_fare   [data-test="component-final-fare"] — the standard fare; the
+    #                coupon discount lives in a sibling <p class="disc-applied">,
+    #                so this is the pre-coupon price we want for the index.
+    #   airline      [data-test="component-airline-heading"] — per-card carrier
     SELECTORS = {
-        "card": ".listingCard",  # UPDATE THIS
-        "total_fare": ".priceSection",  # UPDATE THIS
-        "flight_number": ".flightNumber",  # UPDATE THIS (optional)
-        "airline": ".airlineName",  # UPDATE THIS (OTA — per-card carrier)
+        "card": "[data-test='component-cardBody']",
+        "total_fare": "[data-test='component-final-fare']",
+        "airline": "[data-test='component-airline-heading']",
     }
-    AI_FALLBACK_SELECTOR = "#listing-id"
+    AI_FALLBACK_SELECTOR = "#flightsContainer, .listingBodyWrapper"
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=60, max=180))
     def scrape_route(
